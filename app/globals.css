@@ -86,6 +86,20 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: "Forge Festus";
+  src: url("/assets/manuscript/fonts/festus.ttf") format("truetype");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge Calligrapher";
+  src: url("/assets/manuscript/fonts/calligrapher-regular.ttf") format("truetype");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
 :root {
   color-scheme: light;
 }

@@ -23,7 +23,17 @@ type ManuscriptSettings = {
   divider: string;
   titleDivider: string;
   dropcap: string;
-  fontStyle: "garamond" | "monomakh" | "ponomar" | "menaion" | "fedorovsk" | "ruslan" | "uncial" | "almendra";
+  fontStyle:
+    | "garamond"
+    | "monomakh"
+    | "ponomar"
+    | "menaion"
+    | "fedorovsk"
+    | "ruslan"
+    | "uncial"
+    | "almendra"
+    | "festus"
+    | "calligrapher";
 };
 
 type ProgressEvent = {
@@ -224,6 +234,7 @@ const fontOptions: Array<{
   description: string;
   family: string;
   preview: "latin" | "ru";
+  assetPath?: string;
 }> = [
   {
     value: "garamond",
@@ -280,6 +291,22 @@ const fontOptions: Array<{
     description: "Latin fantasy calligraphic display",
     family: "\"Forge Almendra Display\", \"Forge EB Garamond\", serif",
     preview: "latin"
+  },
+  {
+    value: "festus",
+    label: "Festus",
+    description: "Latin medieval display hand",
+    family: "\"Forge Festus\", \"Forge EB Garamond\", serif",
+    preview: "latin",
+    assetPath: "/assets/manuscript/fonts/festus.ttf"
+  },
+  {
+    value: "calligrapher",
+    label: "Calligrapher",
+    description: "Latin calligraphic manuscript hand",
+    family: "\"Forge Calligrapher\", \"Forge EB Garamond\", serif",
+    preview: "latin",
+    assetPath: "/assets/manuscript/fonts/calligrapher-regular.ttf"
   }
 ];
 
@@ -369,6 +396,7 @@ export default function Home() {
   const [settings, setSettings] = useState<ManuscriptSettings>(defaultSettings);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [manifest, setManifest] = useState<AssetManifest | null>(null);
+  const [availableFontAssets, setAvailableFontAssets] = useState<Record<string, boolean>>({});
   const [imageActionStatus, setImageActionStatus] = useState("");
   const [illustrationDraft, setIllustrationDraft] = useState<IllustrationDraft | null>(null);
   const [captionDraft, setCaptionDraft] = useState<CaptionDraft | null>(null);
@@ -382,7 +410,8 @@ export default function Home() {
   const previewInk = inkThemeForPaper(settings.paper);
   const canSubmit = useMemo(() => markdown.trim().length > 0, [markdown]);
   const lineCount = Math.max(Math.min(markdown.split("\n").length, 220), 24);
-  const selectedFont = fontOptions.find((font) => font.value === settings.fontStyle) ?? fontOptions[0];
+  const visibleFontOptions = fontOptions.filter((font) => !font.assetPath || availableFontAssets[font.value]);
+  const selectedFont = visibleFontOptions.find((font) => font.value === settings.fontStyle) ?? fontOptions[0];
 
   useEffect(() => {
     fetch("/assets/manuscript/manifest.json")
@@ -403,6 +432,30 @@ export default function Home() {
         });
       })
       .catch(() => setManifest(null));
+  }, []);
+
+  useEffect(() => {
+    const customFonts = fontOptions.filter((font) => font.assetPath);
+    void Promise.all(
+      customFonts.map(async (font) => {
+        try {
+          const response = await fetch(font.assetPath!, { method: "HEAD" });
+          return [font.value, response.ok] as const;
+        } catch {
+          return [font.value, false] as const;
+        }
+      })
+    ).then((entries) => {
+      const available = Object.fromEntries(entries);
+      setAvailableFontAssets(available);
+      setSettings((current) => {
+        const currentFont = fontOptions.find((font) => font.value === current.fontStyle);
+        if (currentFont?.assetPath && !available[current.fontStyle]) {
+          return { ...current, fontStyle: defaultSettings.fontStyle };
+        }
+        return current;
+      });
+    });
   }, []);
 
   useEffect(() => {
@@ -1080,7 +1133,7 @@ export default function Home() {
                   <span className="text-xs text-[#7d603b]">{selectedFont.label}</span>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {fontOptions.map((font) => (
+                  {visibleFontOptions.map((font) => (
                     <button
                       key={font.value}
                       type="button"

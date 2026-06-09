@@ -17,7 +17,9 @@ export const manuscriptSettingsSchema = z.object({
       "fedorovsk",
       "ruslan",
       "uncial",
-      "almendra"
+      "almendra",
+      "festus",
+      "calligrapher"
     ])
     .default("garamond")
 });

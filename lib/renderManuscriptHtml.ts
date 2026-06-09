@@ -66,8 +66,20 @@ const manuscriptFonts = {
   almendra: {
     body: "\"Forge Almendra Display\", \"Forge EB Garamond\", Georgia, serif",
     display: "\"Forge Almendra Display\", \"Forge Cormorant\", serif"
+  },
+  festus: {
+    body: "\"Forge Festus\", \"Forge EB Garamond\", Georgia, serif",
+    display: "\"Forge Festus\", \"Forge Cormorant\", serif"
+  },
+  calligrapher: {
+    body: "\"Forge Calligrapher\", \"Forge EB Garamond\", Georgia, serif",
+    display: "\"Forge Calligrapher\", \"Forge Cormorant\", serif"
   }
 } satisfies Record<ManuscriptSettings["fontStyle"], { body: string; display: string }>;
+const fontFiles: Partial<Record<ManuscriptSettings["fontStyle"], string>> = {
+  festus: "/assets/manuscript/fonts/festus.ttf",
+  calligrapher: "/assets/manuscript/fonts/calligrapher-regular.ttf"
+};
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -89,6 +101,10 @@ async function sanitizeRenderSettings(settings: ManuscriptSettings): Promise<Man
     }
     const exists = await fileExists(path.join(assetRoot, value.replace(/^\//, "")));
     if (!exists) next[key] = defaultValue;
+  }
+  const fontFile = fontFiles[next.fontStyle];
+  if (fontFile && !(await fileExists(path.join(assetRoot, fontFile.replace(/^\//, ""))))) {
+    next.fontStyle = defaultManuscriptSettings.fontStyle;
   }
   return next;
 }
