@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Forge EB Garamond";
+  src: url("/assets/manuscript/fonts/eb-garamond-latin-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge EB Garamond";
+  src: url("/assets/manuscript/fonts/eb-garamond-cyrillic-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge Cormorant";
+  src: url("/assets/manuscript/fonts/cormorant-garamond-latin-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge Cormorant";
+  src: url("/assets/manuscript/fonts/cormorant-garamond-cyrillic-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+}
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: #24180f;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(182, 130, 42, 0.22), transparent 26%),
+    radial-gradient(circle at 82% 12%, rgba(103, 20, 15, 0.16), transparent 25%),
+    linear-gradient(135deg, #ead7ac 0%, #f8edcf 42%, #d8bd82 100%);
+  font-family: "Forge EB Garamond", Georgia, Cambria, "Times New Roman", serif;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}

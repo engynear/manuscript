@@ -1,0 +1,461 @@
+/* Manuscript visual style: tune paper, ornaments, fonts, and page geometry here. */
+@font-face {
+  font-family: "Forge EB Garamond";
+  src: url("/assets/manuscript/fonts/eb-garamond-latin-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge EB Garamond";
+  src: url("/assets/manuscript/fonts/eb-garamond-cyrillic-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge EB Garamond";
+  src: url("/assets/manuscript/fonts/eb-garamond-latin-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge EB Garamond";
+  src: url("/assets/manuscript/fonts/eb-garamond-cyrillic-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge EB Garamond";
+  src: url("/assets/manuscript/fonts/eb-garamond-latin-400-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Forge EB Garamond";
+  src: url("/assets/manuscript/fonts/eb-garamond-cyrillic-400-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "Forge Cormorant";
+  src: url("/assets/manuscript/fonts/cormorant-garamond-latin-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge Cormorant";
+  src: url("/assets/manuscript/fonts/cormorant-garamond-cyrillic-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+}
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.manuscript-root {
+  --ink: var(--manuscript-ink, #241105);
+  --faded-ink: var(--manuscript-faded-ink, #553217);
+  --red: var(--manuscript-red, #7a170f);
+  --gold: var(--manuscript-gold, #a46f1e);
+  color: var(--ink);
+  min-height: 100vh;
+  background: #2c241b;
+  font-family: "Forge EB Garamond", Georgia, Cambria, "Times New Roman", serif;
+  line-height: 1.52;
+}
+
+.manuscript-book {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 28px 18px;
+}
+
+.manuscript-sheet {
+  position: relative;
+  width: min(100%, 820px);
+  aspect-ratio: 210 / 297;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 247, 220, 0.16), transparent 36rem),
+    var(--paper-url) center / 100% 100% no-repeat,
+    #e5c68f;
+  box-shadow: 0 18px 42px rgba(18, 11, 5, 0.34);
+  break-after: page;
+}
+
+.manuscript-sheet:last-child {
+  break-after: auto;
+}
+
+.manuscript-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  padding: 54px 70px 70px 150px;
+}
+
+.manuscript-margin-ornament {
+  position: absolute;
+  z-index: 1;
+  left: 34px;
+  top: 86px;
+  width: 94px;
+  height: calc(100% - 150px);
+  background: var(--ornament-url) left top / contain no-repeat;
+  pointer-events: none;
+  opacity: 0.94;
+}
+
+.manuscript-title {
+  max-width: 620px;
+  margin: 0 auto;
+  color: #3a1209;
+  font-family: "Forge Cormorant", "Forge EB Garamond", Georgia, serif;
+  font-size: 50px;
+  line-height: 0.98;
+  text-align: center;
+}
+
+.manuscript-subtitle {
+  max-width: 590px;
+  margin: 14px auto 0;
+  color: var(--faded-ink);
+  font-size: 21px;
+  font-style: italic;
+  text-align: center;
+}
+
+.manuscript-title-rule,
+.manuscript-rule {
+  display: flex;
+  justify-content: center;
+  margin: 22px auto;
+}
+
+.manuscript-title-rule img {
+  width: min(100%, 430px);
+  height: auto;
+  opacity: 0.78;
+}
+
+.manuscript-rule span {
+  display: block;
+  width: min(100%, 430px);
+  height: 42px;
+  background: var(--divider-url) center / contain no-repeat;
+  font-size: 0;
+}
+
+.manuscript-heading {
+  margin: 0 0 13px;
+  color: var(--red);
+  font-family: "Forge Cormorant", "Forge EB Garamond", Georgia, serif;
+  font-size: 28px;
+  font-variant: small-caps;
+  letter-spacing: 0;
+  line-height: 1.12;
+  text-align: center;
+  break-after: avoid;
+}
+
+.manuscript-heading.level-2 {
+  font-size: 25px;
+}
+
+.manuscript-heading.level-3,
+.manuscript-heading.level-4 {
+  font-size: 22px;
+}
+
+.manuscript-body {
+  font-size: 20px;
+}
+
+.manuscript-body p {
+  margin: 0 0 0.78em;
+  text-align: justify;
+  orphans: 3;
+  widows: 3;
+}
+
+.manuscript-body strong {
+  color: inherit;
+  font-family: "Forge EB Garamond", Georgia, Cambria, "Times New Roman", serif;
+  font-weight: 700;
+  text-shadow: none;
+}
+
+.manuscript-body.drop-cap > p:first-of-type::first-letter {
+  float: left;
+  min-width: 1.02em;
+  margin: 0.03em 0.18em 0.02em 0;
+  padding: 0.12em 0.16em 0.14em;
+  color: #fff0b7;
+  background:
+    var(--dropcap-url) center / 100% 100% no-repeat,
+    var(--dropcap-bg, #5a150d);
+  font-family: "Forge Cormorant", "Forge EB Garamond", Georgia, serif;
+  font-size: 50px;
+  font-weight: 700;
+  line-height: 0.74;
+  text-align: center;
+  text-shadow: 0 2px 0 rgba(61, 15, 11, 0.65);
+}
+
+.manuscript-body ul,
+.manuscript-body ol {
+  margin: 0 0 0.85em 1.4em;
+}
+
+.manuscript-body blockquote {
+  margin: 1em 0;
+  padding: 0.55em 0.9em;
+  color: #503018;
+  border-left: 3px solid rgba(122, 23, 15, 0.36);
+  background: rgba(255, 248, 220, 0.2);
+}
+
+.manuscript-body code {
+  padding: 0.12em 0.28em;
+  border: 1px solid rgba(74, 39, 17, 0.22);
+  background: rgba(255, 250, 230, 0.45);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82em;
+}
+
+.manuscript-figure {
+  position: relative;
+  margin: 20px auto 24px;
+  padding-top: 8px;
+  text-align: center;
+  break-inside: avoid;
+}
+
+.figure-controls {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 6px;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: rgba(45, 24, 10, 0.84);
+  opacity: 0;
+  transform: translate(-50%, -8px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.manuscript-figure:hover .figure-controls {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.figure-controls button {
+  border: 1px solid rgba(248, 232, 194, 0.28);
+  background: #7a170f;
+  color: #fff3ce;
+  cursor: pointer;
+  font: 700 11px/1.1 Georgia, serif;
+  padding: 6px 8px;
+}
+
+@media print {
+  .figure-controls {
+    display: none;
+  }
+}
+
+.manuscript-content > .manuscript-figure:first-child {
+  margin-top: 44px;
+}
+
+.manuscript-figure img {
+  display: block;
+  width: min(100%, 500px);
+  max-height: 285px;
+  margin: 0 auto;
+  object-fit: contain;
+  border: 0;
+  mix-blend-mode: multiply;
+  filter: contrast(0.98) saturate(1.04);
+  box-shadow: none;
+}
+
+.manuscript-figure.illustration-map img,
+.manuscript-figure.illustration-chapter-vignette img,
+.manuscript-figure.illustration-scribal-diagram img {
+  width: min(100%, 610px);
+  max-height: 255px;
+}
+
+.manuscript-figure.illustration-coat-of-arms img,
+.manuscript-figure.illustration-relic-study img,
+.manuscript-figure.illustration-bestiary-creature img {
+  width: min(74%, 280px);
+  max-height: 240px;
+}
+
+.manuscript-figure.compact-figure {
+  margin: 12px auto 14px;
+  padding-top: 2px;
+}
+
+.manuscript-figure.compact-figure img {
+  max-height: 190px;
+}
+
+.manuscript-figure.compact-figure figcaption {
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+.manuscript-figure.illustration-illuminated-miniature img,
+.manuscript-figure.illustration-marginalia-scene img,
+.manuscript-figure.illustration-botanical-marginalia img {
+  mix-blend-mode: normal;
+  filter: contrast(0.98) saturate(1.08);
+}
+
+.manuscript-figure figcaption {
+  margin-top: 5px;
+  color: var(--faded-ink);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.manuscript-placeholder {
+  width: min(100%, 420px);
+  min-height: 105px;
+  margin: 18px auto 8px;
+  display: grid;
+  place-items: center;
+  background: url("/assets/manuscript/dividers/dividers-03-celtic-knot-divider.png") center / contain no-repeat;
+  font-size: 0;
+}
+
+.manuscript-placeholder.is-loading {
+  position: relative;
+  overflow: hidden;
+  min-height: 170px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(255, 246, 218, 0.2);
+  border: 1px solid rgba(122, 23, 15, 0.2);
+  color: var(--faded-ink);
+  font-size: 14px;
+  font-style: italic;
+}
+
+.manuscript-placeholder.is-loading::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(164, 111, 30, 0.24), transparent 18%),
+    conic-gradient(from 0turn, transparent 0turn, rgba(122, 23, 15, 0.18) 0.12turn, transparent 0.24turn);
+  opacity: 0.7;
+  animation: manuscript-forge-turn 2.4s linear infinite;
+}
+
+.manuscript-placeholder.is-loading span[aria-hidden="true"] {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(78%, 360px);
+  height: 42px;
+  background: url("/assets/manuscript/dividers/dividers-05-simple-gold-ink-flourish.png") center / contain no-repeat;
+  animation: manuscript-ink-breathe 1.6s ease-in-out infinite;
+}
+
+.manuscript-placeholder.is-loading span:not([aria-hidden="true"]) {
+  position: relative;
+  z-index: 1;
+  display: block;
+  max-width: 28ch;
+  text-align: center;
+}
+
+@keyframes manuscript-forge-turn {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes manuscript-ink-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scaleX(0.96);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manuscript-placeholder.is-loading::before,
+  .manuscript-placeholder.is-loading span[aria-hidden="true"] {
+    animation: none;
+  }
+}
+
+@media print {
+  html,
+  body,
+  .manuscript-root {
+    width: 210mm;
+    min-height: 297mm;
+    background: transparent;
+  }
+
+  .manuscript-book {
+    display: block;
+    padding: 0;
+  }
+
+  .manuscript-sheet {
+    width: 210mm;
+    height: 297mm;
+    box-shadow: none;
+    page-break-after: always;
+  }
+
+  .manuscript-sheet:last-child {
+    page-break-after: auto;
+  }
+
+  .manuscript-content {
+    padding: 14mm 18mm 18mm 39mm;
+  }
+
+  .manuscript-margin-ornament {
+    left: 8mm;
+    top: 25mm;
+    width: 27mm;
+    height: 235mm;
+  }
+}

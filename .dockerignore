@@ -1,0 +1,10 @@
+.git
+.next
+.cache
+node_modules
+public/generated
+*.tsbuildinfo
+.env
+.env.local
+.env*.local
+npm-debug.log*

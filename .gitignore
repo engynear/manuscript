@@ -1,0 +1,11 @@
+.next
+node_modules
+public/generated
+public/from_user
+.cache
+.agents
+skills-lock.json
+*.tsbuildinfo
+.env
+.env.local
+.env*.local

@@ -1,0 +1,23 @@
+services:
+  manuscript:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: manuscript-forge
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - manuscript_cache:/app/.cache
+      - manuscript_generated:/app/public/generated
+
+volumes:
+  manuscript_cache:
+  manuscript_generated:
