@@ -179,6 +179,13 @@ async function assetUrl(publicPath: string, options: RenderOptions): Promise<str
 
 function dropcapBackground(dropcapPath: string): string {
   const normalized = dropcapPath.toLowerCase();
+  if (normalized.includes("aged-ink")) return "#182235";
+  if (normalized.includes("cintric")) return "#102b61";
+  if (normalized.includes("herbal")) return "#183a22";
+  if (normalized.includes("royal2")) return "#0e2e73";
+  if (normalized.includes("royal")) return "#6d120c";
+  if (normalized.includes("slavic")) return "#120f0b";
+  if (normalized.includes("vine")) return "#d5aa46";
   if (normalized.includes("blue")) return "#123044";
   if (normalized.includes("dark") || normalized.includes("woodcut")) return "#1f1712";
   return "#5a150d";
