@@ -263,18 +263,21 @@ body {
 
 .manuscript-dropcap-letter {
   float: left;
-  min-width: 1.02em;
-  margin: 0.03em 0.18em 0.02em 0;
-  padding: 0.12em 0.16em 0.14em;
+  display: inline-grid;
+  width: 58px;
+  height: 58px;
+  margin: 3px 12px 2px 0;
+  padding: 0;
+  place-items: center;
   color: #fff0b7;
   background:
     var(--dropcap-url) center / 100% 100% no-repeat,
     var(--dropcap-bg, #5a150d);
   font-family: var(--manuscript-display-font, "Forge Cormorant", "Forge EB Garamond", Georgia, serif);
-  font-size: 50px;
+  font-size: 41px;
   font-style: normal;
   font-weight: 700;
-  line-height: 0.74;
+  line-height: 1;
   text-align: center;
   text-shadow: 0 2px 0 rgba(61, 15, 11, 0.65);
 }

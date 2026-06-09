@@ -1139,9 +1139,9 @@ export default function Home() {
                     <div className="relative z-10 flex h-full flex-col py-12 pl-24 pr-10" style={{ color: previewInk.ink }}>
                       <h4 className="text-center text-3xl font-bold leading-tight" style={{ color: previewInk.red }}>{t.sampleHeading}</h4>
                       <img src={settings.titleDivider} alt="" className="mx-auto mt-3 h-8 w-44 object-contain" />
-                      <div className="mt-6 flex items-start gap-2">
+                      <div className="mt-6 flex items-start gap-3">
                         <span
-                          className="relative grid size-14 shrink-0 place-items-center overflow-hidden text-3xl font-black text-[#fff4d6]"
+                          className="relative grid size-[58px] shrink-0 place-items-center overflow-hidden text-[41px] font-bold leading-none text-[#fff4d6]"
                           style={{ backgroundColor: dropcapBackground(settings.dropcap) }}
                         >
                           <img src={settings.dropcap} alt="" className="absolute inset-0 size-full object-cover" />
