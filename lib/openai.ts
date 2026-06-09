@@ -1,12 +1,16 @@
 import OpenAI from "openai";
 
-if (!process.env.OPENAI_API_KEY) {
-  console.warn("OPENAI_API_KEY is not set. Generation requests will fail until .env.local is configured.");
-}
+let cachedClient: OpenAI | null = null;
 
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+export function getOpenAI(): OpenAI {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not set. Configure it in .env.local locally or .env for Docker.");
+  }
+
+  cachedClient ??= new OpenAI({ apiKey });
+  return cachedClient;
+}
 
 // Change planning and image models here as newer OpenAI models become preferable.
 export const PLAN_MODEL = process.env.OPENAI_PLAN_MODEL ?? "gpt-4.1";

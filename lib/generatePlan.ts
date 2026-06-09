@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { openai, PLAN_MODEL } from "./openai";
+import { getOpenAI, PLAN_MODEL } from "./openai";
 import { NormalizedMarkdown } from "./markdown";
 import { manuscriptPlanJsonSchema, manuscriptPlanSchema, ManuscriptPlan } from "./manuscriptSchema";
 
@@ -37,7 +37,7 @@ export async function generatePlan(normalized: NormalizedMarkdown, hash: string)
     bodyLength: section.bodyMarkdown.length
   }));
 
-  const response = await openai.responses.create({
+  const response = await getOpenAI().responses.create({
     model: PLAN_MODEL,
     input: [
       {

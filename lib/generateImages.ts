@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
-import { IMAGE_MODEL, IMAGE_QUALITY, openai } from "./openai";
+import { getOpenAI, IMAGE_MODEL, IMAGE_QUALITY } from "./openai";
 import { ManuscriptPlan } from "./manuscriptSchema";
 
 export type GeneratedImage = {
@@ -140,7 +140,7 @@ export async function generateImages(
 
 Style constraints: ${manuscriptIllustrationStyle(illustration.type)}`;
 
-      const result = await openai.images.generate({
+      const result = await getOpenAI().images.generate({
         model: IMAGE_MODEL,
         prompt,
         size: imageSizeForType(illustration.type),
