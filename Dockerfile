@@ -1,4 +1,6 @@
-FROM mcr.microsoft.com/playwright:v1.52.0-jammy AS deps
+ARG PLAYWRIGHT_VERSION=1.60.0
+
+FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-jammy AS deps
 
 WORKDIR /app
 
@@ -11,7 +13,7 @@ WORKDIR /app
 COPY . .
 RUN npm run build
 
-FROM mcr.microsoft.com/playwright:v1.52.0-jammy AS runner
+FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-jammy AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production
