@@ -23,6 +23,7 @@ type ManuscriptSettings = {
   divider: string;
   titleDivider: string;
   dropcap: string;
+  fontStyle: "garamond" | "monomakh" | "ponomar" | "menaion" | "fedorovsk";
 };
 
 type ProgressEvent = {
@@ -119,6 +120,8 @@ const copy = {
     chapterAuto: "Auto",
     chapterNewPage: "New Page",
     chapterInline: "Inline",
+    fontStyle: "Manuscript Font",
+    fontStyleText: "Typeface used for body text and chapter headings.",
     paper: "Paper",
     paperText: "A4 page background used in preview and PDF.",
     ornament: "Margin Ornament",
@@ -173,6 +176,8 @@ const copy = {
     chapterAuto: "Авто",
     chapterNewPage: "С новой страницы",
     chapterInline: "Подряд",
+    fontStyle: "Шрифт",
+    fontStyleText: "Гарнитура для основного текста и заголовков.",
     paper: "Бумага",
     paperText: "Фон A4-страницы в предпросмотре и PDF.",
     ornament: "Орнамент на полях",
@@ -207,11 +212,49 @@ const defaultSettings: ManuscriptSettings = {
   ornament: "/assets/manuscript/marginOrnaments/marginOrnaments-09-ivy-vine-with-red-berries.png",
   divider: "/assets/manuscript/dividers/dividers-04-red-and-gold-gothic-divider.png",
   titleDivider: "/assets/manuscript/dividers/dividers-05-simple-gold-ink-flourish.png",
-  dropcap: "/assets/manuscript/dropcaps/dropcaps-03-red-gold-illuminated-initial-frame.png"
+  dropcap: "/assets/manuscript/dropcaps/dropcaps-03-red-gold-illuminated-initial-frame.png",
+  fontStyle: "garamond"
 };
 const assetSettingKeys = ["paper", "ornament", "divider", "titleDivider", "dropcap"] as const;
 
 const imageLimitOptions = [0, 1, 2, 3, 4, 6, 8];
+const fontOptions: Array<{
+  value: ManuscriptSettings["fontStyle"];
+  label: string;
+  description: string;
+  family: string;
+}> = [
+  {
+    value: "garamond",
+    label: "EB Garamond",
+    description: "Readable literary manuscript",
+    family: "\"Forge EB Garamond\", Georgia, serif"
+  },
+  {
+    value: "monomakh",
+    label: "Monomakh Unicode",
+    description: "Old Slavic display hand",
+    family: "\"Forge Monomakh\", \"Forge EB Garamond\", serif"
+  },
+  {
+    value: "ponomar",
+    label: "Ponomar Unicode",
+    description: "Church Slavonic book hand",
+    family: "\"Forge Ponomar\", \"Forge EB Garamond\", serif"
+  },
+  {
+    value: "menaion",
+    label: "Menaion Unicode",
+    description: "Liturgical manuscript texture",
+    family: "\"Forge Menaion\", \"Forge EB Garamond\", serif"
+  },
+  {
+    value: "fedorovsk",
+    label: "Fedorovsk Unicode",
+    description: "Printed old Cyrillic tone",
+    family: "\"Forge Fedorovsk\", \"Forge EB Garamond\", serif"
+  }
+];
 
 function assetName(item?: AssetItem) {
   if (!item) return "";
@@ -305,6 +348,7 @@ export default function Home() {
   const previewInk = inkThemeForPaper(settings.paper);
   const canSubmit = useMemo(() => markdown.trim().length > 0, [markdown]);
   const lineCount = Math.max(Math.min(markdown.split("\n").length, 220), 24);
+  const selectedFont = fontOptions.find((font) => font.value === settings.fontStyle) ?? fontOptions[0];
 
   useEffect(() => {
     fetch("/assets/manuscript/manifest.json")
@@ -993,6 +1037,37 @@ export default function Home() {
                 </div>
               </section>
 
+              <section className="border-t border-[#d4bd8d] py-4">
+                <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-[#2a170c]">{t.fontStyle}</h3>
+                    <p className="text-sm leading-5 text-[#6a5134]">{t.fontStyleText}</p>
+                  </div>
+                  <span className="text-xs text-[#7d603b]">{selectedFont.label}</span>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {fontOptions.map((font) => (
+                    <button
+                      key={font.value}
+                      type="button"
+                      onClick={() => setSetting("fontStyle", font.value)}
+                      className={`border bg-[#fff7df] p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-[#7a1b12] ${
+                        settings.fontStyle === font.value
+                          ? "border-[#7a1b12] shadow-[inset_0_0_0_2px_rgba(122,27,18,0.28)]"
+                          : "border-[#c9ae79] hover:border-[#7a1b12]"
+                      }`}
+                    >
+                      <div className="text-sm font-bold text-[#2a170c]">{font.label}</div>
+                      <div className="mt-1 text-xs text-[#725536]">{font.description}</div>
+                      <div className="mt-3 min-h-16 text-[#3a160d]" style={{ fontFamily: font.family }}>
+                        <div className="text-2xl leading-7">Manuscript Forge</div>
+                        <div className="text-xl leading-7">Сильмеринское Зерцало</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
               <div className="grid gap-5">
                 {assetPicker(t.paper, t.paperText, "paper", "papers", "paper")}
                 {assetPicker(t.ornament, t.ornamentText, "ornament", "marginOrnaments", "vertical")}
@@ -1010,7 +1085,7 @@ export default function Home() {
                 <div className="mt-5 overflow-hidden border border-[#c9ae79] bg-[#efe0bd] p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22)]">
                   <div
                     className="relative mx-auto aspect-[0.707/1] max-h-[560px] w-full max-w-[330px] overflow-hidden bg-cover bg-center text-[#2a170c]"
-                    style={{ backgroundImage: `url(${settings.paper})` }}
+                    style={{ backgroundImage: `url(${settings.paper})`, fontFamily: selectedFont.family }}
                   >
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_36%,rgba(255,245,210,0.16),transparent_43%),linear-gradient(90deg,rgba(68,33,13,0.18),transparent_14%,transparent_86%,rgba(68,33,13,0.16))]" />
                     <img
@@ -1019,7 +1094,7 @@ export default function Home() {
                       className="absolute left-4 top-12 h-[72%] w-[54px] object-contain object-top opacity-95"
                     />
                     <div className="relative z-10 flex h-full flex-col py-12 pl-24 pr-10" style={{ color: previewInk.ink }}>
-                      <h4 className="text-center font-serif text-3xl font-bold leading-tight" style={{ color: previewInk.red }}>{t.sampleHeading}</h4>
+                      <h4 className="text-center text-3xl font-bold leading-tight" style={{ color: previewInk.red }}>{t.sampleHeading}</h4>
                       <img src={settings.titleDivider} alt="" className="mx-auto mt-3 h-8 w-44 object-contain" />
                       <div className="mt-6 flex items-start gap-2">
                         <span
@@ -1029,7 +1104,7 @@ export default function Home() {
                           <img src={settings.dropcap} alt="" className="absolute inset-0 size-full object-cover" />
                           <span className="relative z-10">{locale === "ru" ? "Б" : "T"}</span>
                         </span>
-                        <p className="font-serif text-base leading-7">{t.sampleLine}</p>
+                        <p className="text-base leading-7">{t.sampleLine}</p>
                       </div>
                       <img src={settings.divider} alt="" className="mx-auto mt-8 h-10 w-52 object-contain" />
                       <div className="mt-auto border-t border-[#7a5a2e]/35 pt-4 text-center text-xs italic" style={{ color: previewInk.fadedInk }}>

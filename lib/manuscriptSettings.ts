@@ -7,7 +7,8 @@ export const manuscriptSettingsSchema = z.object({
   ornament: z.string().default("/assets/manuscript/marginOrnaments/marginOrnaments-09-ivy-vine-with-red-berries.png"),
   divider: z.string().default("/assets/manuscript/dividers/dividers-04-red-and-gold-gothic-divider.png"),
   titleDivider: z.string().default("/assets/manuscript/dividers/dividers-05-simple-gold-ink-flourish.png"),
-  dropcap: z.string().default("/assets/manuscript/dropcaps/dropcaps-03-red-gold-illuminated-initial-frame.png")
+  dropcap: z.string().default("/assets/manuscript/dropcaps/dropcaps-03-red-gold-illuminated-initial-frame.png"),
+  fontStyle: z.enum(["garamond", "monomakh", "ponomar", "menaion", "fedorovsk"]).default("garamond")
 });
 
 export type ManuscriptSettings = z.infer<typeof manuscriptSettingsSchema>;

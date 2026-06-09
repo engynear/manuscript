@@ -34,6 +34,28 @@ type ManuscriptBlock = {
 
 const assetRoot = path.join(process.cwd(), "public");
 const assetSettingKeys = ["paper", "ornament", "divider", "titleDivider", "dropcap"] as const;
+const manuscriptFonts = {
+  garamond: {
+    body: "\"Forge EB Garamond\", Georgia, Cambria, \"Times New Roman\", serif",
+    display: "\"Forge Cormorant\", \"Forge EB Garamond\", Georgia, serif"
+  },
+  monomakh: {
+    body: "\"Forge Monomakh\", \"Forge EB Garamond\", Georgia, serif",
+    display: "\"Forge Monomakh\", \"Forge Cormorant\", serif"
+  },
+  ponomar: {
+    body: "\"Forge Ponomar\", \"Forge EB Garamond\", Georgia, serif",
+    display: "\"Forge Ponomar\", \"Forge Cormorant\", serif"
+  },
+  menaion: {
+    body: "\"Forge Menaion\", \"Forge EB Garamond\", Georgia, serif",
+    display: "\"Forge Menaion\", \"Forge Cormorant\", serif"
+  },
+  fedorovsk: {
+    body: "\"Forge Fedorovsk\", \"Forge EB Garamond\", Georgia, serif",
+    display: "\"Forge Fedorovsk\", \"Forge Cormorant\", serif"
+  }
+} satisfies Record<ManuscriptSettings["fontStyle"], { body: string; display: string }>;
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -205,6 +227,51 @@ function renderInline(node: MdNode): string {
   }
 }
 
+function splitFirstPlainLetter(nodes: MdNode[]): { letter: string | null; rest: MdNode[] } {
+  const rest: MdNode[] = [];
+  let letter: string | null = null;
+
+  for (const node of nodes) {
+    if (letter) {
+      rest.push(node);
+      continue;
+    }
+
+    if (node.type === "text" && typeof node.value === "string") {
+      const match = node.value.match(/^(\s*)([\s\S])([\s\S]*)$/u);
+      if (!match) {
+        rest.push(node);
+        continue;
+      }
+      const [, leading, first, remainder] = match;
+      letter = first;
+      if (leading) rest.push({ ...node, value: leading });
+      if (remainder) rest.push({ ...node, value: remainder });
+      continue;
+    }
+
+    const children = node.children ?? [];
+    if (children.length) {
+      const split = splitFirstPlainLetter(children);
+      if (split.letter) {
+        letter = split.letter;
+        rest.push({ ...node, children: split.rest });
+        continue;
+      }
+    }
+
+    rest.push(node);
+  }
+
+  return { letter, rest };
+}
+
+function renderDropCapParagraph(node: MdNode): string {
+  const split = splitFirstPlainLetter(node.children ?? []);
+  if (!split.letter) return renderBlock(node);
+  return `<p><span class="manuscript-dropcap-letter">${escapeHtml(split.letter)}</span>${split.rest.map(renderInline).join("")}</p>`;
+}
+
 function renderBlock(node: MdNode): string {
   const children = node.children ?? [];
   switch (node.type) {
@@ -281,7 +348,7 @@ function markdownToBlocks(markdown: string, dropCap: boolean): ManuscriptBlock[]
     const className = dropCap && firstParagraph && isParagraph ? "manuscript-body drop-cap" : "manuscript-body";
     if (isParagraph) firstParagraph = false;
     return {
-      html: `<div class="${className}">${renderBlock(node)}</div>`,
+      html: `<div class="${className}">${className.includes("drop-cap") ? renderDropCapParagraph(node) : renderBlock(node)}</div>`,
       units: blockUnits(node),
       className,
       keepWithNext: node.type === "heading",
@@ -457,7 +524,8 @@ export async function renderManuscriptHtml(
   const rawCss = await fs.readFile(path.join(process.cwd(), "styles", "manuscript.css"), "utf8");
   const settings = options.settings ?? defaultManuscriptSettings;
   const inkTheme = inkThemeForPaper(settings.paper);
-  const cssVars = `:root{--paper-url:url("${settings.paper}");--ornament-url:url("${settings.ornament}");--divider-url:url("${settings.divider}");--dropcap-url:url("${settings.dropcap}");--dropcap-bg:${dropcapBackground(settings.dropcap)};--manuscript-ink:${inkTheme.ink};--manuscript-faded-ink:${inkTheme.fadedInk};--manuscript-red:${inkTheme.red};--manuscript-gold:${inkTheme.gold};}`;
+  const fonts = manuscriptFonts[settings.fontStyle];
+  const cssVars = `:root{--paper-url:url("${settings.paper}");--ornament-url:url("${settings.ornament}");--divider-url:url("${settings.divider}");--dropcap-url:url("${settings.dropcap}");--dropcap-bg:${dropcapBackground(settings.dropcap)};--manuscript-ink:${inkTheme.ink};--manuscript-faded-ink:${inkTheme.fadedInk};--manuscript-red:${inkTheme.red};--manuscript-gold:${inkTheme.gold};--manuscript-body-font:${fonts.body};--manuscript-display-font:${fonts.display};}`;
   const css = await inlineCssAssetUrls(`${cssVars}\n${rawCss}`, options);
   const pages = paginateBlocks(await manuscriptBlocks(plan, images, options));
 

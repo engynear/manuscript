@@ -30,6 +30,34 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: "Forge Monomakh";
+  src: url("/assets/manuscript/fonts/monomakh-regular.otf") format("opentype");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge Ponomar";
+  src: url("/assets/manuscript/fonts/ponomar-regular.otf") format("opentype");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge Menaion";
+  src: url("/assets/manuscript/fonts/menaion-regular.otf") format("opentype");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge Fedorovsk";
+  src: url("/assets/manuscript/fonts/fedorovsk-regular.otf") format("opentype");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
 :root {
   color-scheme: light;
 }
