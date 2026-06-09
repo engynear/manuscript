@@ -58,6 +58,34 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: "Forge Ruslan";
+  src: url("/assets/manuscript/fonts/ruslan-display-latin-400.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge Ruslan";
+  src: url("/assets/manuscript/fonts/ruslan-display-cyrillic-400.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge Uncial Antiqua";
+  src: url("/assets/manuscript/fonts/uncial-antiqua-regular.ttf") format("truetype");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Forge Almendra Display";
+  src: url("/assets/manuscript/fonts/almendra-display-regular.ttf") format("truetype");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
 :root {
   color-scheme: light;
 }

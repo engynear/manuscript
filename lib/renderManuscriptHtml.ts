@@ -54,6 +54,18 @@ const manuscriptFonts = {
   fedorovsk: {
     body: "\"Forge Fedorovsk\", \"Forge EB Garamond\", Georgia, serif",
     display: "\"Forge Fedorovsk\", \"Forge Cormorant\", serif"
+  },
+  ruslan: {
+    body: "\"Forge Ruslan\", \"Forge EB Garamond\", Georgia, serif",
+    display: "\"Forge Ruslan\", \"Forge Cormorant\", serif"
+  },
+  uncial: {
+    body: "\"Forge Uncial Antiqua\", \"Forge EB Garamond\", Georgia, serif",
+    display: "\"Forge Uncial Antiqua\", \"Forge Cormorant\", serif"
+  },
+  almendra: {
+    body: "\"Forge Almendra Display\", \"Forge EB Garamond\", Georgia, serif",
+    display: "\"Forge Almendra Display\", \"Forge Cormorant\", serif"
   }
 } satisfies Record<ManuscriptSettings["fontStyle"], { body: string; display: string }>;
 

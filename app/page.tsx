@@ -23,7 +23,7 @@ type ManuscriptSettings = {
   divider: string;
   titleDivider: string;
   dropcap: string;
-  fontStyle: "garamond" | "monomakh" | "ponomar" | "menaion" | "fedorovsk";
+  fontStyle: "garamond" | "monomakh" | "ponomar" | "menaion" | "fedorovsk" | "ruslan" | "uncial" | "almendra";
 };
 
 type ProgressEvent = {
@@ -206,7 +206,7 @@ const fallbackProgress = {
 };
 
 const defaultSettings: ManuscriptSettings = {
-  imageLimit: 3,
+  imageLimit: 0,
   chapterStart: "auto",
   paper: "/assets/manuscript/papers/paper-02-burnt-edge-parchment-subtle2.jpg",
   ornament: "/assets/manuscript/marginOrnaments/marginOrnaments-09-ivy-vine-with-red-berries.png",
@@ -223,36 +223,63 @@ const fontOptions: Array<{
   label: string;
   description: string;
   family: string;
+  preview: "latin" | "ru";
 }> = [
   {
     value: "garamond",
     label: "EB Garamond",
     description: "Readable literary manuscript",
-    family: "\"Forge EB Garamond\", Georgia, serif"
+    family: "\"Forge EB Garamond\", Georgia, serif",
+    preview: "latin"
   },
   {
     value: "monomakh",
     label: "Monomakh Unicode",
     description: "Old Slavic display hand",
-    family: "\"Forge Monomakh\", \"Forge EB Garamond\", serif"
+    family: "\"Forge Monomakh\", \"Forge EB Garamond\", serif",
+    preview: "ru"
   },
   {
     value: "ponomar",
     label: "Ponomar Unicode",
     description: "Church Slavonic book hand",
-    family: "\"Forge Ponomar\", \"Forge EB Garamond\", serif"
+    family: "\"Forge Ponomar\", \"Forge EB Garamond\", serif",
+    preview: "ru"
   },
   {
     value: "menaion",
     label: "Menaion Unicode",
     description: "Liturgical manuscript texture",
-    family: "\"Forge Menaion\", \"Forge EB Garamond\", serif"
+    family: "\"Forge Menaion\", \"Forge EB Garamond\", serif",
+    preview: "ru"
   },
   {
     value: "fedorovsk",
     label: "Fedorovsk Unicode",
     description: "Printed old Cyrillic tone",
-    family: "\"Forge Fedorovsk\", \"Forge EB Garamond\", serif"
+    family: "\"Forge Fedorovsk\", \"Forge EB Garamond\", serif",
+    preview: "ru"
+  },
+  {
+    value: "ruslan",
+    label: "Ruslan Display",
+    description: "Decorative old-script Cyrillic and Latin",
+    family: "\"Forge Ruslan\", \"Forge EB Garamond\", serif",
+    preview: "ru"
+  },
+  {
+    value: "uncial",
+    label: "Uncial Antiqua",
+    description: "Latin uncial manuscript hand",
+    family: "\"Forge Uncial Antiqua\", \"Forge EB Garamond\", serif",
+    preview: "latin"
+  },
+  {
+    value: "almendra",
+    label: "Almendra Display",
+    description: "Latin fantasy calligraphic display",
+    family: "\"Forge Almendra Display\", \"Forge EB Garamond\", serif",
+    preview: "latin"
   }
 ];
 
@@ -1060,8 +1087,17 @@ export default function Home() {
                       <div className="text-sm font-bold text-[#2a170c]">{font.label}</div>
                       <div className="mt-1 text-xs text-[#725536]">{font.description}</div>
                       <div className="mt-3 min-h-16 text-[#3a160d]" style={{ fontFamily: font.family }}>
-                        <div className="text-2xl leading-7">Manuscript Forge</div>
-                        <div className="text-xl leading-7">Сильмеринское Зерцало</div>
+                        {font.preview === "ru" ? (
+                          <>
+                            <div className="text-2xl leading-7">Сильмеринское Зерцало</div>
+                            <div className="text-xl leading-7">Древняя рукопись</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-2xl leading-7">Manuscript Forge</div>
+                            <div className="text-xl leading-7">Ancient vellum hand</div>
+                          </>
+                        )}
                       </div>
                     </button>
                   ))}

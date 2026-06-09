@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-08T20:14:41.462Z",
+  "generatedAt": "2026-06-09T17:58:21.514Z",
   "sourceDir": "/from_user",
   "assetsDir": "/assets/manuscript",
   "groups": {
@@ -299,6 +299,76 @@
         "sourceHasAlpha": true,
         "width": 640,
         "height": 587
+      },
+      {
+        "id": "dropcaps-04",
+        "source": "/from_user/books/new/aged ink.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-04-aged-ink.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 612
+      },
+      {
+        "id": "dropcaps-05",
+        "source": "/from_user/books/new/cintric.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-05-cintric.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 593
+      },
+      {
+        "id": "dropcaps-06",
+        "source": "/from_user/books/new/herbal.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-06-herbal.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 615
+      },
+      {
+        "id": "dropcaps-07",
+        "source": "/from_user/books/new/royal.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-07-royal.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 620
+      },
+      {
+        "id": "dropcaps-08",
+        "source": "/from_user/books/new/royal2.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-08-royal2.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 616
+      },
+      {
+        "id": "dropcaps-09",
+        "source": "/from_user/books/new/slavic.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-09-slavic.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 627
+      },
+      {
+        "id": "dropcaps-10",
+        "source": "/from_user/books/new/vine.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-10-vine.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 630
       }
     ],
     "corners": [
