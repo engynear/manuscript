@@ -33,6 +33,31 @@ type ManuscriptBlock = {
 };
 
 const assetRoot = path.join(process.cwd(), "public");
+const assetSettingKeys = ["paper", "ornament", "divider", "titleDivider", "dropcap"] as const;
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function sanitizeRenderSettings(settings: ManuscriptSettings): Promise<ManuscriptSettings> {
+  const next: ManuscriptSettings = { ...settings };
+  for (const key of assetSettingKeys) {
+    const value = next[key];
+    const defaultValue = defaultManuscriptSettings[key];
+    if (!value.startsWith("/assets/manuscript/")) {
+      next[key] = defaultValue;
+      continue;
+    }
+    const exists = await fileExists(path.join(assetRoot, value.replace(/^\//, "")));
+    if (!exists) next[key] = defaultValue;
+  }
+  return next;
+}
 const pdfAssetCacheRoot = path.join(process.cwd(), ".cache", "pdf-assets");
 const PAGE_UNITS = 112;
 const FIRST_PAGE_UNITS = 102;
@@ -359,7 +384,7 @@ async function manuscriptBlocks(
   images: Record<string, GeneratedImage>,
   options: RenderOptions
 ): Promise<ManuscriptBlock[]> {
-  const settings = options.settings ?? defaultManuscriptSettings;
+  const settings = await sanitizeRenderSettings(options.settings ?? defaultManuscriptSettings);
   const titleDivider = await assetUrl(settings.titleDivider, options);
   const blocks: ManuscriptBlock[] = [
     {

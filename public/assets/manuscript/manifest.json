@@ -113,16 +113,6 @@
         "sourceHasAlpha": false,
         "width": 1654,
         "height": 2339
-      },
-      {
-        "id": "papers-12",
-        "source": "/from_user/content/illuminated miniature, small medieval scene, muted red blue gold pigments, parchment background.png",
-        "output": "/assets/manuscript/papers/paper-12-illuminated-miniature-small-medieval-scene-muted-red-blue-gold-pigments-parchmen.jpg",
-        "sourceWidth": 1254,
-        "sourceHeight": 1254,
-        "sourceHasAlpha": false,
-        "width": 1654,
-        "height": 2339
       }
     ],
     "marginOrnaments": [
@@ -235,29 +225,9 @@
         "sourceHasAlpha": true,
         "width": 360,
         "height": 1495
-      },
-      {
-        "id": "marginOrnaments-12",
-        "source": "/from_user/vineette_upscayl_4x_remacri-4x.png",
-        "output": "/assets/manuscript/marginOrnaments/marginOrnaments-12-vineette-upscayl-4x-remacri-4x.png",
-        "sourceWidth": 4096,
-        "sourceHeight": 6144,
-        "sourceHasAlpha": true,
-        "width": 360,
-        "height": 543
       }
     ],
     "dividers": [
-      {
-        "id": "dividers-01",
-        "source": "/from_user/content/chapter vignette, horizontal decorative scene, ink wash, soft faded edges.png",
-        "output": "/assets/manuscript/dividers/dividers-01-chapter-vignette-horizontal-decorative-scene-ink-wash-soft-faded-edges.png",
-        "sourceWidth": 1731,
-        "sourceHeight": 909,
-        "sourceHasAlpha": false,
-        "width": 343,
-        "height": 180
-      },
       {
         "id": "dividers-02",
         "source": "/from_user/horizontal-split/black ink monastic divider.png",

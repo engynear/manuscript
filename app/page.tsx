@@ -209,6 +209,7 @@ const defaultSettings: ManuscriptSettings = {
   titleDivider: "/assets/manuscript/dividers/dividers-05-simple-gold-ink-flourish.png",
   dropcap: "/assets/manuscript/dropcaps/dropcaps-03-red-gold-illuminated-initial-frame.png"
 };
+const assetSettingKeys = ["paper", "ornament", "divider", "titleDivider", "dropcap"] as const;
 
 const imageLimitOptions = [0, 1, 2, 3, 4, 6, 8];
 
@@ -308,7 +309,21 @@ export default function Home() {
   useEffect(() => {
     fetch("/assets/manuscript/manifest.json")
       .then((response) => response.json())
-      .then(setManifest)
+      .then((loadedManifest: AssetManifest) => {
+        setManifest(loadedManifest);
+        const available = new Set(Object.values(loadedManifest.groups).flat().map((asset) => asset.output));
+        setSettings((current) => {
+          const next = { ...current };
+          let changed = false;
+          for (const key of assetSettingKeys) {
+            if (!available.has(next[key])) {
+              next[key] = defaultSettings[key];
+              changed = true;
+            }
+          }
+          return changed ? next : current;
+        });
+      })
       .catch(() => setManifest(null));
   }, []);
 
