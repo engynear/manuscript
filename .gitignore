@@ -9,3 +9,14 @@ skills-lock.json
 .env
 .env.local
 .env*.local
+
+# SvelteKit frontend (web/)
+web/node_modules
+web/.svelte-kit
+web/build
+web/package-lock.json
+
+# Go backend (backend/)
+backend/server
+backend/data
+

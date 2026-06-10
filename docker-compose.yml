@@ -1,23 +1,57 @@
 services:
-  manuscript:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: manuscript-forge
+  postgres:
+    image: postgres:16-alpine
+    container_name: manuscript-postgres
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
-      NODE_ENV: production
-      NEXT_TELEMETRY_DISABLED: "1"
+      POSTGRES_USER: manuscript
+      POSTGRES_PASSWORD: manuscript
+      POSTGRES_DB: manuscript
+    volumes:
+      - manuscript_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U manuscript -d manuscript"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build:
+      context: ./backend
+    container_name: manuscript-backend
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgres://manuscript:manuscript@postgres:5432/manuscript?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_PLAN_MODEL: ${OPENAI_PLAN_MODEL:-gpt-4.1}
+      OPENAI_IMAGE_MODEL: ${OPENAI_IMAGE_MODEL:-gpt-image-1}
+      OPENAI_IMAGE_QUALITY: ${OPENAI_IMAGE_QUALITY:-medium}
+      MEDIA_DIR: /data/media
+      MEDIA_BASE_URL: /media
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - manuscript_media:/data/media
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  web:
+    build:
+      context: ./web
+    container_name: manuscript-web
+    restart: unless-stopped
+    environment:
       PORT: "3000"
-      HOSTNAME: "0.0.0.0"
+      PUBLIC_API_BASE: ${PUBLIC_API_BASE:-http://localhost:8080}
+    depends_on:
+      - backend
     ports:
       - "127.0.0.1:3000:3000"
-    volumes:
-      - manuscript_cache:/app/.cache
-      - manuscript_generated:/app/public/generated
 
 volumes:
-  manuscript_cache:
-  manuscript_generated:
+  manuscript_pg:
+  manuscript_media:

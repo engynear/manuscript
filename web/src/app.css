@@ -1,0 +1,449 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Manuscript Forge — design tokens & base
+   Parchment workshop → warm reading room.
+   Ported from the Claude Design prototype (styles.css).
+   ============================================================ */
+
+:root {
+	/* --- paper / parchment --- */
+	--paper: #efe5d2;
+	--paper-card: #faf5ea;
+	--paper-deep: #e6dabf;
+	--paper-edge: #f6efe1;
+
+	/* --- ink / sepia --- */
+	--ink: #2a2017;
+	--ink-soft: #5d4d39;
+	--ink-faint: #93826a;
+	--ink-ghost: #b6a78d;
+
+	/* --- hairlines --- */
+	--line: rgba(58, 44, 28, 0.16);
+	--line-strong: rgba(58, 44, 28, 0.3);
+	--line-soft: rgba(58, 44, 28, 0.09);
+
+	/* --- accents: oxblood (primary) + gilt (selected / highlight) --- */
+	--oxblood: #7c2230;
+	--oxblood-deep: #611722;
+	--oxblood-soft: #9a3a46;
+	--gilt: #a9842f;
+	--gilt-bright: #c3a155;
+	--gilt-soft: #d8c089;
+
+	/* --- shelving materials --- */
+	--wood: #6c4a2c;
+	--wood-dark: #432c16;
+	--wood-light: #8a6238;
+	--leather: #6e4631;
+	--leather-dark: #4a2c1d;
+
+	/* --- shadows --- */
+	--shadow-sm: 0 1px 2px rgba(42, 30, 16, 0.1);
+	--shadow-md: 0 6px 18px rgba(42, 30, 16, 0.14);
+	--shadow-lg: 0 22px 50px rgba(42, 30, 16, 0.26);
+
+	/* --- type --- */
+	--font-chrome: 'Spectral', Georgia, 'Times New Roman', serif;
+	--font-manuscript: 'EB Garamond', Georgia, serif;
+	--font-display: 'Cinzel', Georgia, serif;
+	--font-scribe: 'IM Fell English', Georgia, serif;
+	--font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+	--radius: 10px;
+	--radius-sm: 7px;
+	--radius-lg: 16px;
+
+	--shelf-wood-h: 26px;
+	--mat: 0.7;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	height: 100%;
+}
+
+body {
+	font-family: var(--font-chrome);
+	color: var(--ink);
+	background: var(--paper);
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+.paper-grain {
+	background-image:
+		radial-gradient(circle at 18% 22%, rgba(124, 90, 40, 0.05) 0, transparent 38%),
+		radial-gradient(circle at 82% 70%, rgba(80, 56, 24, 0.045) 0, transparent 42%),
+		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
+
+button {
+	font-family: inherit;
+	cursor: pointer;
+}
+input,
+textarea,
+select {
+	font-family: inherit;
+}
+
+::selection {
+	background: rgba(169, 132, 47, 0.28);
+}
+
+:focus-visible {
+	outline: 2.5px solid var(--gilt);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+*::-webkit-scrollbar {
+	width: 11px;
+	height: 11px;
+}
+*::-webkit-scrollbar-thumb {
+	background: rgba(108, 74, 44, 0.34);
+	border-radius: 20px;
+	border: 3px solid transparent;
+	background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+	background: rgba(108, 74, 44, 0.5);
+	background-clip: padding-box;
+}
+
+/* ============================================================
+   Re-usable chrome primitives
+   ============================================================ */
+
+.mf-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-family: var(--font-chrome);
+	font-size: 15px;
+	font-weight: 600;
+	letter-spacing: 0.005em;
+	padding: 9px 16px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--line-strong);
+	background: var(--paper-card);
+	color: var(--ink);
+	transition:
+		transform 0.12s ease,
+		box-shadow 0.15s ease,
+		background 0.15s ease,
+		border-color 0.15s ease;
+	box-shadow: var(--shadow-sm);
+}
+.mf-btn:hover {
+	background: #fff;
+	border-color: var(--line-strong);
+}
+.mf-btn:active {
+	transform: translateY(1px);
+}
+.mf-btn--primary {
+	background: linear-gradient(176deg, var(--oxblood-soft), var(--oxblood) 55%, var(--oxblood-deep));
+	color: #f7ecd9;
+	border-color: var(--oxblood-deep);
+	box-shadow: 0 2px 0 var(--oxblood-deep), var(--shadow-md);
+}
+.mf-btn--primary:hover {
+	filter: brightness(1.06);
+}
+.mf-btn--ghost {
+	background: transparent;
+	border-color: transparent;
+	box-shadow: none;
+}
+.mf-btn--ghost:hover {
+	background: rgba(108, 74, 44, 0.09);
+}
+.mf-btn--gilt {
+	background: linear-gradient(176deg, var(--gilt-bright), var(--gilt));
+	color: #3a2a0e;
+	border-color: #8a6a22;
+	box-shadow: 0 2px 0 #7c5f1e, var(--shadow-sm);
+}
+.mf-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.mf-chip {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-faint);
+	padding: 3px 8px;
+	border-radius: 100px;
+	border: 1px solid var(--line);
+	background: rgba(255, 255, 255, 0.4);
+}
+
+.mf-card {
+	background: var(--paper-card);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow-sm);
+}
+
+.eyebrow {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	letter-spacing: 0.22em;
+	text-transform: uppercase;
+	color: var(--gilt);
+	font-weight: 500;
+}
+
+/* ============================================================
+   Wood & leather material helpers (the shelving)
+   ============================================================ */
+
+.wood-surface {
+	background-color: var(--wood);
+	background-image:
+		repeating-linear-gradient(
+			90deg,
+			rgba(60, 38, 18, 0) 0px,
+			rgba(60, 38, 18, 0.18) 2px,
+			rgba(60, 38, 18, 0) 7px,
+			rgba(150, 110, 60, 0.12) 11px,
+			rgba(60, 38, 18, 0) 17px
+		),
+		linear-gradient(180deg, var(--wood-light), var(--wood) 40%, var(--wood-dark));
+	box-shadow: inset 0 2px 0 rgba(255, 220, 170, 0.18), inset 0 -3px 6px rgba(0, 0, 0, 0.34);
+}
+.leather-surface {
+	background-color: var(--leather);
+	background-image:
+		radial-gradient(circle at 30% 20%, rgba(255, 210, 170, 0.1), transparent 45%),
+		radial-gradient(circle at 70% 80%, rgba(0, 0, 0, 0.18), transparent 50%),
+		linear-gradient(160deg, #7a5038, var(--leather) 55%, var(--leather-dark));
+}
+
+/* ============================================================
+   Manuscript page (Forge preview, Settings preview, Reader)
+   ============================================================ */
+.ms-page {
+	font-family: var(--font-manuscript);
+	color: #322516;
+	background: #f3ead4;
+	line-height: 1.62;
+}
+.ms-page h1,
+.ms-page h2 {
+	font-family: var(--font-display);
+	font-weight: 600;
+	letter-spacing: 0.01em;
+}
+.ms-page p {
+	margin: 0 0 0.85em;
+	text-align: justify;
+	hyphens: auto;
+}
+.ms-dropcap::first-letter {
+	font-family: var(--font-display);
+	float: left;
+	font-size: 3.05em;
+	line-height: 0.82;
+	padding: 0.06em 0.08em 0 0;
+	margin-right: 0.02em;
+	color: var(--oxblood);
+}
+
+@keyframes mf-fade-up {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes mf-fade {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+.mf-fade-up {
+	animation: mf-fade-up 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.mf-fade {
+	animation: mf-fade 0.4s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		animation-duration: 0.001ms !important;
+		transition-duration: 0.001ms !important;
+	}
+}
+
+/* ---- menu rows ---- */
+.menu-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 9px 11px;
+	border: none;
+	background: none;
+	border-radius: 8px;
+	font-family: var(--font-chrome);
+	font-size: 14.5px;
+	font-weight: 500;
+	color: var(--ink);
+	cursor: pointer;
+	text-align: left;
+}
+.menu-row:hover {
+	background: rgba(108, 74, 44, 0.09);
+}
+
+/* ---- reader chrome ---- */
+.reader-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	font-family: var(--font-chrome);
+	font-size: 14px;
+	font-weight: 600;
+	padding: 8px 13px;
+	border-radius: 8px;
+	cursor: pointer;
+	color: #f0e2c8;
+	background: rgba(255, 255, 255, 0.07);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	transition: background 0.15s;
+}
+.reader-btn:hover {
+	background: rgba(255, 255, 255, 0.16);
+}
+.reader-arrow {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 3;
+	width: 52px;
+	height: 52px;
+	border-radius: 100px;
+	display: grid;
+	place-items: center;
+	cursor: pointer;
+	color: #f0e2c8;
+	background: rgba(20, 12, 6, 0.4);
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	backdrop-filter: blur(4px);
+	transition:
+		background 0.15s,
+		transform 0.15s;
+}
+.reader-arrow:hover:not(:disabled) {
+	background: rgba(20, 12, 6, 0.7);
+}
+.reader-arrow:disabled {
+	opacity: 0.28;
+	cursor: default;
+}
+
+/* ---- page-turn flip ---- */
+.page-flip {
+	transform-origin: left center;
+	backface-visibility: hidden;
+	z-index: 5;
+}
+.flip-next {
+	transform-origin: left center;
+	animation: flip-next 0.6s cubic-bezier(0.4, 0.05, 0.3, 1) both;
+}
+.flip-prev {
+	transform-origin: right center;
+	animation: flip-prev 0.6s cubic-bezier(0.4, 0.05, 0.3, 1) both;
+}
+@keyframes flip-next {
+	from {
+		transform: rotateY(0deg);
+	}
+	to {
+		transform: rotateY(-178deg);
+		box-shadow: -18px 0 34px rgba(0, 0, 0, 0.28);
+	}
+}
+@keyframes flip-prev {
+	from {
+		transform: rotateY(0deg);
+	}
+	to {
+		transform: rotateY(178deg);
+		box-shadow: 18px 0 34px rgba(0, 0, 0, 0.28);
+	}
+}
+
+/* ---- shelf → reader open / close ---- */
+@keyframes reader-open {
+	0% {
+		transform: translateY(40px) rotateX(34deg) scale(0.7);
+		opacity: 0;
+	}
+	60% {
+		opacity: 1;
+	}
+	100% {
+		transform: none;
+		opacity: 1;
+	}
+}
+@keyframes reader-close {
+	to {
+		transform: translateY(40px) rotateX(34deg) scale(0.7);
+		opacity: 0;
+	}
+}
+.reader-open {
+	animation: reader-open 1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+	transform-style: preserve-3d;
+}
+.reader-close {
+	animation: reader-close 0.6s ease both;
+	transform-style: preserve-3d;
+}
+
+/* ---- responsive ---- */
+.hide-sm {
+	display: inline;
+}
+.only-sm {
+	display: none;
+}
+@media (max-width: 900px) {
+	.forge-grid,
+	.detail-grid,
+	.cover-grid {
+		grid-template-columns: 1fr !important;
+	}
+	.brand-words {
+		display: none;
+	}
+}
+@media (max-width: 720px) {
+	.hide-sm {
+		display: none;
+	}
+}

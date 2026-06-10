@@ -1,0 +1,238 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { onDestroy } from 'svelte';
+	import { t } from '$lib/i18n';
+	import { settings, SAMPLE_MD } from '$lib/settings';
+	import { currentUser } from '$lib/api';
+	import Icon from '$lib/components/Icon.svelte';
+	import Manuscript from '$lib/components/Manuscript.svelte';
+
+	let md = $state(SAMPLE_MD);
+	let tab = $state<'md' | 'upload'>('md');
+	let phase = $state<'empty' | 'forging' | 'done'>('empty');
+	let pct = $state(0);
+	let stepIdx = $state(0);
+	let timer: ReturnType<typeof setInterval> | undefined;
+
+	const steps = ['p_parse', 'p_paginate', 'p_illuminate', 'p_bind'];
+	const lineCount = $derived(md.split('\n').length);
+
+	// NOTE: Phase 2 replaces this simulated run with streamNDJSON('/api/plan', …).
+	function generate() {
+		phase = 'forging';
+		pct = 0;
+		stepIdx = 0;
+		let p = 0;
+		clearInterval(timer);
+		timer = setInterval(() => {
+			p += 2 + Math.random() * 5;
+			if (p > 100) p = 100;
+			pct = p;
+			stepIdx = Math.min(3, Math.floor(p / 25));
+			if (p >= 100) {
+				clearInterval(timer);
+				setTimeout(() => (phase = 'done'), 380);
+			}
+		}, 95);
+	}
+
+	async function onFile(e: Event) {
+		const input = e.target as HTMLInputElement;
+		const f = input.files?.[0];
+		if (f) {
+			md = await f.text();
+			tab = 'md';
+		}
+	}
+
+	onDestroy(() => clearInterval(timer));
+</script>
+
+<div style="max-width:1320px;margin:0 auto;padding:26px 26px 60px">
+	<div
+		class="forge-grid"
+		style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);gap:22px;align-items:start"
+	>
+		<!-- left: input -->
+		<section class="mf-card" style="overflow:hidden">
+			<div
+				style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)"
+			>
+				<span
+					style="width:26px;height:26px;border-radius:100px;background:var(--ink);color:var(--gilt-bright);display:grid;place-items:center;font-family:var(--font-display);font-weight:700;font-size:14px;flex:0 0 auto"
+					>1</span
+				>
+				<div>
+					<h2 style="margin:0;font-family:var(--font-display);font-size:18px">{$t('input_title')}</h2>
+					<div style="font-size:13px;color:var(--ink-faint)">{$t('input_sub')}</div>
+				</div>
+			</div>
+
+			<div style="display:flex;gap:6px;padding:12px 16px 0">
+				{#each [['md', 'tab_md'], ['upload', 'tab_upload']] as [k, l]}
+					<button
+						onclick={() => (tab = k as 'md' | 'upload')}
+						style="border:none;padding:7px 13px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;
+							background:{tab === k ? 'var(--paper-deep)' : 'transparent'};
+							color:{tab === k ? 'var(--ink)' : 'var(--ink-faint)'}">{$t(l)}</button
+					>
+				{/each}
+			</div>
+
+			{#if tab === 'md'}
+				<div
+					style="display:flex;margin:16px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper-edge)"
+				>
+					<div
+						aria-hidden="true"
+						style="padding:14px 10px;text-align:right;font-family:var(--font-mono);font-size:12.5px;line-height:1.6;color:var(--ink-ghost);background:rgba(0,0,0,.025);user-select:none;min-width:38px"
+					>
+						{#each Array(lineCount) as _, i}
+							<div>{i + 1}</div>
+						{/each}
+					</div>
+					<textarea
+						bind:value={md}
+						spellcheck="false"
+						style="flex:1;border:none;outline:none;resize:vertical;min-height:300px;padding:14px;font-family:var(--font-mono);font-size:13.5px;line-height:1.6;color:var(--ink);background:transparent"
+					></textarea>
+				</div>
+			{:else}
+				<label
+					style="display:grid;place-items:center;gap:10px;margin:16px;padding:46px 20px;min-height:300px;border:2px dashed var(--line-strong);border-radius:10px;background:var(--paper-edge);cursor:pointer;text-align:center"
+				>
+					<Icon name="upload" size={30} style="color:var(--gilt)" />
+					<div style="font-weight:600">{$t('tab_upload')}</div>
+					<div style="font-size:13px;color:var(--ink-faint)">{$t('upload_hint')}</div>
+					<input type="file" accept=".md,text/markdown" style="display:none" onchange={onFile} />
+				</label>
+			{/if}
+
+			<div style="display:flex;align-items:center;gap:12px;padding:0 18px 18px">
+				<span class="mf-chip">{md.length} {$t('chars')}</span>
+				<span style="font-size:13px;color:var(--ink-faint)">{$t('supports_md')}</span>
+				<div style="flex:1"></div>
+				<button class="mf-btn" onclick={() => goto('/settings')}>
+					<Icon name="settings" size={16} />{$t('settings')}
+				</button>
+				<button class="mf-btn mf-btn--primary" onclick={generate} disabled={phase === 'forging'}>
+					<Icon name="forge" size={17} />{phase === 'forging' ? $t('generating') : $t('generate')}
+				</button>
+			</div>
+		</section>
+
+		<!-- right: forged preview -->
+		<section
+			class="mf-card"
+			style="overflow:hidden;position:relative;min-height:540px;display:flex;flex-direction:column"
+		>
+			<div
+				style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)"
+			>
+				<span
+					style="width:26px;height:26px;border-radius:100px;background:var(--ink);color:var(--gilt-bright);display:grid;place-items:center;font-family:var(--font-display);font-weight:700;font-size:14px;flex:0 0 auto"
+					>2</span
+				>
+				<div style="flex:1">
+					<h2 style="margin:0;font-family:var(--font-display);font-size:18px">{$t('forged_title')}</h2>
+					<div style="font-size:13px;color:var(--ink-faint)">{$t('forged_sub')}</div>
+				</div>
+			</div>
+
+			<div style="flex:1;position:relative;background:var(--paper-deep);overflow:auto;padding:22px">
+				{#if phase === 'empty'}
+					<div
+						style="position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:30px"
+					>
+						<div>
+							<div
+								style="width:86px;height:116px;margin:0 auto 18px;border-radius:6px;border:2px dashed var(--line-strong);background:repeating-linear-gradient(135deg,transparent 0 8px,rgba(108,74,44,.05) 8px 16px);display:grid;place-items:center"
+							>
+								<Icon name="read" size={30} style="color:var(--ink-ghost)" />
+							</div>
+							<div style="font-family:var(--font-display);font-size:19px;color:var(--ink-soft)">
+								{$t('forged_empty')}
+							</div>
+							<div style="font-size:14px;color:var(--ink-faint);margin-top:6px;max-width:280px">
+								{$t('forged_hint')}
+							</div>
+						</div>
+					</div>
+				{:else}
+					<div
+						class="mf-fade-up"
+						style="max-width:560px;margin:0 auto;border-radius:6px;overflow:hidden;box-shadow:var(--shadow-lg)"
+					>
+						<Manuscript {md} settings={$settings} />
+					</div>
+				{/if}
+
+				{#if phase === 'forging'}
+					<div
+						class="mf-fade"
+						style="position:absolute;inset:0;background:rgba(243,234,212,.85);backdrop-filter:blur(3px);display:grid;place-items:center;z-index:5"
+					>
+						<div style="width:min(340px,80%);text-align:center">
+							<div
+								style="font-family:var(--font-display);font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:var(--gilt)"
+							>
+								{Math.round(pct)}%
+							</div>
+							<div
+								style="height:6px;background:var(--paper-deep);border-radius:100px;overflow:hidden;margin:12px 0 20px;border:1px solid var(--line)"
+							>
+								<div
+									style="width:{pct}%;height:100%;background:linear-gradient(90deg,var(--gilt),var(--oxblood));transition:width .35s ease"
+								></div>
+							</div>
+							<div style="display:grid;gap:9px;text-align:left;justify-content:center">
+								{#each steps as st, i}
+									<div
+										style="display:flex;align-items:center;gap:10px;font-size:15px;
+											color:{i < stepIdx
+											? 'var(--ink)'
+											: i === stepIdx
+												? 'var(--oxblood)'
+												: 'var(--ink-faint)'};
+											font-weight:{i === stepIdx ? 600 : 400}"
+									>
+										<span
+											style="width:18px;height:18px;border-radius:100px;display:grid;place-items:center;flex:0 0 auto;
+												border:1.5px solid {i <= stepIdx ? 'var(--oxblood)' : 'var(--line-strong)'};
+												background:{i < stepIdx ? 'var(--oxblood)' : 'transparent'};color:#f0dcc0"
+										>
+											{#if i < stepIdx}
+												<Icon name="check" size={11} stroke={2.6} />
+											{:else if i === stepIdx}
+												<span
+													style="width:6px;height:6px;border-radius:100px;background:var(--oxblood)"
+												></span>
+											{/if}
+										</span>
+										{$t(st)}
+									</div>
+								{/each}
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			{#if phase === 'done'}
+				<div
+					class="mf-fade"
+					style="display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--line);flex-wrap:wrap"
+				>
+					<button class="mf-btn mf-btn--primary"><Icon name="download" size={16} />{$t('download')}</button>
+					<button class="mf-btn" onclick={() => goto('/cover/new')}>
+						<Icon name="image" size={16} />{$t('design_cover')}
+					</button>
+					<div style="flex:1"></div>
+					<button class="mf-btn mf-btn--gilt" onclick={() => goto($currentUser ? '/library' : '/signin')}>
+						{#if $currentUser}<Icon name="check" size={16} />{/if}{$t('save_lib')}
+					</button>
+				</div>
+			{/if}
+		</section>
+	</div>
+</div>
