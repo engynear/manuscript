@@ -1,0 +1,110 @@
+/* Manuscript @font-face rules, restored from styles/manuscript.css.
+   Font files live in /static/assets/manuscript/fonts. */
+@font-face {
+	font-family: 'Forge EB Garamond';
+	src: url('/assets/manuscript/fonts/eb-garamond-latin-400.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge EB Garamond';
+	src: url('/assets/manuscript/fonts/eb-garamond-cyrillic-400.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge EB Garamond';
+	src: url('/assets/manuscript/fonts/eb-garamond-latin-700.woff2') format('woff2');
+	font-weight: 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge EB Garamond';
+	src: url('/assets/manuscript/fonts/eb-garamond-cyrillic-700.woff2') format('woff2');
+	font-weight: 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge EB Garamond';
+	src: url('/assets/manuscript/fonts/eb-garamond-latin-400-italic.woff2') format('woff2');
+	font-weight: 400;
+	font-style: italic;
+}
+@font-face {
+	font-family: 'Forge EB Garamond';
+	src: url('/assets/manuscript/fonts/eb-garamond-cyrillic-400-italic.woff2') format('woff2');
+	font-weight: 400;
+	font-style: italic;
+}
+@font-face {
+	font-family: 'Forge Cormorant';
+	src: url('/assets/manuscript/fonts/cormorant-garamond-latin-700.woff2') format('woff2');
+	font-weight: 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge Cormorant';
+	src: url('/assets/manuscript/fonts/cormorant-garamond-cyrillic-700.woff2') format('woff2');
+	font-weight: 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge Monomakh';
+	src: url('/assets/manuscript/fonts/monomakh-regular.otf') format('opentype');
+	font-weight: 400 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge Ponomar';
+	src: url('/assets/manuscript/fonts/ponomar-regular.otf') format('opentype');
+	font-weight: 400 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge Menaion';
+	src: url('/assets/manuscript/fonts/menaion-regular.otf') format('opentype');
+	font-weight: 400 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge Fedorovsk';
+	src: url('/assets/manuscript/fonts/fedorovsk-regular.otf') format('opentype');
+	font-weight: 400 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge Ruslan';
+	src: url('/assets/manuscript/fonts/ruslan-display-latin-400.woff2') format('woff2');
+	font-weight: 400 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge Ruslan';
+	src: url('/assets/manuscript/fonts/ruslan-display-cyrillic-400.woff2') format('woff2');
+	font-weight: 400 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge Uncial Antiqua';
+	src: url('/assets/manuscript/fonts/uncial-antiqua-regular.ttf') format('truetype');
+	font-weight: 400 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge Almendra Display';
+	src: url('/assets/manuscript/fonts/almendra-display-regular.ttf') format('truetype');
+	font-weight: 400 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge Festus';
+	src: url('/assets/manuscript/fonts/festus.ttf') format('truetype');
+	font-weight: 400 700;
+	font-style: normal;
+}
+@font-face {
+	font-family: 'Forge Calligrapher';
+	src: url('/assets/manuscript/fonts/calligrapher-regular.ttf') format('truetype');
+	font-weight: 400 700;
+	font-style: normal;
+}

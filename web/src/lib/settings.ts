@@ -1,17 +1,19 @@
 import { writable } from 'svelte/store';
 import type { ManuscriptSettings } from './types';
 
+/** Defaults restored from the original app (asset-based manuscript settings). */
 export const DEFAULT_SETTINGS: ManuscriptSettings = {
-	paper: 'aged',
-	font: 'EB Garamond',
-	divider: 'fleuron',
-	dropcap: true,
-	ornament: 'vine',
-	tint: '#f3ead4',
-	handwritten: false
+	imageLimit: 0,
+	chapterStart: 'auto',
+	paper: '/assets/manuscript/papers/paper-02-burnt-edge-parchment-subtle2.jpg',
+	ornament: '/assets/manuscript/marginOrnaments/marginOrnaments-09-ivy-vine-with-red-berries.png',
+	divider: '/assets/manuscript/dividers/dividers-04-red-and-gold-gothic-divider.png',
+	titleDivider: '/assets/manuscript/dividers/dividers-05-simple-gold-ink-flourish.png',
+	dropcap: '/assets/manuscript/dropcaps/dropcaps-03-red-gold-illuminated-initial-frame.png',
+	fontStyle: 'garamond'
 };
 
-/** App-wide manuscript settings (Forge + Settings modal share this). */
+/** App-wide manuscript settings (Forge + Settings share this). */
 export const settings = writable<ManuscriptSettings>({ ...DEFAULT_SETTINGS });
 
 export const SAMPLE_MD = `# The Road Beneath the Elder Moon

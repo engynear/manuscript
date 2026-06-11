@@ -23,15 +23,31 @@ export interface Cover {
 	artUrl?: string | null;
 }
 
-/** Manuscript material/typography settings (mirrors the design's `settings`). */
+export type FontStyle =
+	| 'garamond'
+	| 'monomakh'
+	| 'ponomar'
+	| 'menaion'
+	| 'fedorovsk'
+	| 'ruslan'
+	| 'uncial'
+	| 'almendra'
+	| 'festus'
+	| 'calligrapher';
+
+/**
+ * Rich manuscript settings (asset-based), restored from the original app and
+ * adapted to the new UI. Values are public asset paths under /assets/manuscript.
+ */
 export interface ManuscriptSettings {
+	imageLimit: number;
+	chapterStart: 'auto' | 'newPage' | 'inline';
 	paper: string;
-	font: string;
-	divider: string;
-	dropcap: boolean;
 	ornament: string;
-	tint: string;
-	handwritten: boolean;
+	divider: string;
+	titleDivider: string;
+	dropcap: string;
+	fontStyle: FontStyle;
 }
 
 export interface Book {

@@ -1,0 +1,440 @@
+{
+  "generatedAt": "2026-06-09T17:58:21.514Z",
+  "sourceDir": "/from_user",
+  "assetsDir": "/assets/manuscript",
+  "groups": {
+    "papers": [
+      {
+        "id": "papers-01",
+        "source": "/from_user/backs/upscayl_png_remacri-4x_4x/burnt edge parchment, subtle1.png",
+        "output": "/assets/manuscript/papers/paper-01-burnt-edge-parchment-subtle1.jpg",
+        "sourceWidth": 4216,
+        "sourceHeight": 5968,
+        "sourceHasAlpha": false,
+        "width": 1654,
+        "height": 2339
+      },
+      {
+        "id": "papers-02",
+        "source": "/from_user/backs/upscayl_png_remacri-4x_4x/burnt edge parchment, subtle2.png",
+        "output": "/assets/manuscript/papers/paper-02-burnt-edge-parchment-subtle2.jpg",
+        "sourceWidth": 4216,
+        "sourceHeight": 5968,
+        "sourceHasAlpha": false,
+        "width": 1654,
+        "height": 2339
+      },
+      {
+        "id": "papers-03",
+        "source": "/from_user/backs/upscayl_png_remacri-4x_4x/dark aged brown parchment.png",
+        "output": "/assets/manuscript/papers/paper-03-dark-aged-brown-parchment.jpg",
+        "sourceWidth": 4220,
+        "sourceHeight": 5964,
+        "sourceHasAlpha": false,
+        "width": 1654,
+        "height": 2339
+      },
+      {
+        "id": "papers-04",
+        "source": "/from_user/backs/upscayl_png_remacri-4x_4x/faded ivory manuscript paper.png",
+        "output": "/assets/manuscript/papers/paper-04-faded-ivory-manuscript-paper.jpg",
+        "sourceWidth": 4220,
+        "sourceHeight": 5964,
+        "sourceHasAlpha": false,
+        "width": 1654,
+        "height": 2339
+      },
+      {
+        "id": "papers-05",
+        "source": "/from_user/backs/upscayl_png_remacri-4x_4x/old Slavic chronicle paper1.png",
+        "output": "/assets/manuscript/papers/paper-05-old-slavic-chronicle-paper1.jpg",
+        "sourceWidth": 4220,
+        "sourceHeight": 5964,
+        "sourceHasAlpha": false,
+        "width": 1654,
+        "height": 2339
+      },
+      {
+        "id": "papers-06",
+        "source": "/from_user/backs/upscayl_png_remacri-4x_4x/old Slavic chronicle paper2.png",
+        "output": "/assets/manuscript/papers/paper-06-old-slavic-chronicle-paper2.jpg",
+        "sourceWidth": 4216,
+        "sourceHeight": 5968,
+        "sourceHasAlpha": false,
+        "width": 1654,
+        "height": 2339
+      },
+      {
+        "id": "papers-07",
+        "source": "/from_user/backs/upscayl_png_remacri-4x_4x/pale monastery vellum.png",
+        "output": "/assets/manuscript/papers/paper-07-pale-monastery-vellum.jpg",
+        "sourceWidth": 4220,
+        "sourceHeight": 5964,
+        "sourceHasAlpha": false,
+        "width": 1654,
+        "height": 2339
+      },
+      {
+        "id": "papers-08",
+        "source": "/from_user/backs/upscayl_png_remacri-4x_4x/stained alchemist scroll paper.png",
+        "output": "/assets/manuscript/papers/paper-08-stained-alchemist-scroll-paper.jpg",
+        "sourceWidth": 4220,
+        "sourceHeight": 5964,
+        "sourceHasAlpha": false,
+        "width": 1654,
+        "height": 2339
+      },
+      {
+        "id": "papers-09",
+        "source": "/from_user/backs/upscayl_png_remacri-4x_4x/warm golden parchment.png",
+        "output": "/assets/manuscript/papers/paper-09-warm-golden-parchment.jpg",
+        "sourceWidth": 4220,
+        "sourceHeight": 5964,
+        "sourceHasAlpha": false,
+        "width": 1654,
+        "height": 2339
+      },
+      {
+        "id": "papers-10",
+        "source": "/from_user/backs/upscayl_png_remacri-4x_4x/weathered fantasy tome page1.png",
+        "output": "/assets/manuscript/papers/paper-10-weathered-fantasy-tome-page1.jpg",
+        "sourceWidth": 4220,
+        "sourceHeight": 5964,
+        "sourceHasAlpha": false,
+        "width": 1654,
+        "height": 2339
+      },
+      {
+        "id": "papers-11",
+        "source": "/from_user/backs/upscayl_png_remacri-4x_4x/weathered fantasy tome page2.png",
+        "output": "/assets/manuscript/papers/paper-11-weathered-fantasy-tome-page2.jpg",
+        "sourceWidth": 4220,
+        "sourceHeight": 5964,
+        "sourceHasAlpha": false,
+        "width": 1654,
+        "height": 2339
+      }
+    ],
+    "marginOrnaments": [
+      {
+        "id": "marginOrnaments-01",
+        "source": "/from_user/ornaments/upscayl_png_remacri-4x_4x/blue and gold illuminated marginalia.png",
+        "output": "/assets/manuscript/marginOrnaments/marginOrnaments-01-blue-and-gold-illuminated-marginalia.png",
+        "sourceWidth": 4096,
+        "sourceHeight": 6144,
+        "sourceHasAlpha": true,
+        "width": 360,
+        "height": 1500
+      },
+      {
+        "id": "marginOrnaments-02",
+        "source": "/from_user/ornaments/upscayl_png_remacri-4x_4x/Celtic knot vertical ornament1.png",
+        "output": "/assets/manuscript/marginOrnaments/marginOrnaments-02-celtic-knot-vertical-ornament1.png",
+        "sourceWidth": 4096,
+        "sourceHeight": 6144,
+        "sourceHasAlpha": true,
+        "width": 360,
+        "height": 1761
+      },
+      {
+        "id": "marginOrnaments-03",
+        "source": "/from_user/ornaments/upscayl_png_remacri-4x_4x/Celtic knot vertical ornament2.png",
+        "output": "/assets/manuscript/marginOrnaments/marginOrnaments-03-celtic-knot-vertical-ornament2.png",
+        "sourceWidth": 4096,
+        "sourceHeight": 6144,
+        "sourceHasAlpha": true,
+        "width": 360,
+        "height": 2019
+      },
+      {
+        "id": "marginOrnaments-04",
+        "source": "/from_user/ornaments/upscayl_png_remacri-4x_4x/faded sepia ink vine.png",
+        "output": "/assets/manuscript/marginOrnaments/marginOrnaments-04-faded-sepia-ink-vine.png",
+        "sourceWidth": 4096,
+        "sourceHeight": 6144,
+        "sourceHasAlpha": true,
+        "width": 360,
+        "height": 1989
+      },
+      {
+        "id": "marginOrnaments-05",
+        "source": "/from_user/ornaments/upscayl_png_remacri-4x_4x/gold acanthus leaves1.png",
+        "output": "/assets/manuscript/marginOrnaments/marginOrnaments-05-gold-acanthus-leaves1.png",
+        "sourceWidth": 4096,
+        "sourceHeight": 6144,
+        "sourceHasAlpha": true,
+        "width": 360,
+        "height": 1516
+      },
+      {
+        "id": "marginOrnaments-06",
+        "source": "/from_user/ornaments/upscayl_png_remacri-4x_4x/gold acanthus leaves2.png",
+        "output": "/assets/manuscript/marginOrnaments/marginOrnaments-06-gold-acanthus-leaves2.png",
+        "sourceWidth": 4096,
+        "sourceHeight": 6144,
+        "sourceHasAlpha": true,
+        "width": 360,
+        "height": 2075
+      },
+      {
+        "id": "marginOrnaments-07",
+        "source": "/from_user/ornaments/upscayl_png_remacri-4x_4x/gothic floral margin.png",
+        "output": "/assets/manuscript/marginOrnaments/marginOrnaments-07-gothic-floral-margin.png",
+        "sourceWidth": 4096,
+        "sourceHeight": 6144,
+        "sourceHasAlpha": true,
+        "width": 360,
+        "height": 2199
+      },
+      {
+        "id": "marginOrnaments-08",
+        "source": "/from_user/ornaments/upscayl_png_remacri-4x_4x/herbalist manuscript plant study.png",
+        "output": "/assets/manuscript/marginOrnaments/marginOrnaments-08-herbalist-manuscript-plant-study.png",
+        "sourceWidth": 4096,
+        "sourceHeight": 6144,
+        "sourceHasAlpha": true,
+        "width": 360,
+        "height": 1369
+      },
+      {
+        "id": "marginOrnaments-09",
+        "source": "/from_user/ornaments/upscayl_png_remacri-4x_4x/ivy vine with red berries.png",
+        "output": "/assets/manuscript/marginOrnaments/marginOrnaments-09-ivy-vine-with-red-berries.png",
+        "sourceWidth": 4096,
+        "sourceHeight": 6144,
+        "sourceHasAlpha": true,
+        "width": 360,
+        "height": 2070
+      },
+      {
+        "id": "marginOrnaments-10",
+        "source": "/from_user/ornaments/upscayl_png_remacri-4x_4x/Slavic manuscript red-black ornament.png",
+        "output": "/assets/manuscript/marginOrnaments/marginOrnaments-10-slavic-manuscript-red-black-ornament.png",
+        "sourceWidth": 4096,
+        "sourceHeight": 6144,
+        "sourceHasAlpha": true,
+        "width": 360,
+        "height": 1848
+      },
+      {
+        "id": "marginOrnaments-11",
+        "source": "/from_user/ornaments/upscayl_png_remacri-4x_4x/thin black ink botanical vine.png",
+        "output": "/assets/manuscript/marginOrnaments/marginOrnaments-11-thin-black-ink-botanical-vine.png",
+        "sourceWidth": 4096,
+        "sourceHeight": 6144,
+        "sourceHasAlpha": true,
+        "width": 360,
+        "height": 1495
+      }
+    ],
+    "dividers": [
+      {
+        "id": "dividers-02",
+        "source": "/from_user/horizontal-split/black ink monastic divider.png",
+        "output": "/assets/manuscript/dividers/dividers-02-black-ink-monastic-divider.png",
+        "sourceWidth": 1536,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 1200,
+        "height": 143
+      },
+      {
+        "id": "dividers-03",
+        "source": "/from_user/horizontal-split/Celtic knot divider.png",
+        "output": "/assets/manuscript/dividers/dividers-03-celtic-knot-divider.png",
+        "sourceWidth": 1536,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 1200,
+        "height": 151
+      },
+      {
+        "id": "dividers-04",
+        "source": "/from_user/horizontal-split/red and gold gothic divider.png",
+        "output": "/assets/manuscript/dividers/dividers-04-red-and-gold-gothic-divider.png",
+        "sourceWidth": 1536,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 1200,
+        "height": 156
+      },
+      {
+        "id": "dividers-05",
+        "source": "/from_user/horizontal-split/simple gold ink flourish.png",
+        "output": "/assets/manuscript/dividers/dividers-05-simple-gold-ink-flourish.png",
+        "sourceWidth": 1536,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 1200,
+        "height": 101
+      }
+    ],
+    "dropcaps": [
+      {
+        "id": "dropcaps-01",
+        "source": "/from_user/books/blue gold gothic initial frame.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-01-blue-gold-gothic-initial-frame.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 590
+      },
+      {
+        "id": "dropcaps-02",
+        "source": "/from_user/books/dark woodcut initial frame.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-02-dark-woodcut-initial-frame.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 614
+      },
+      {
+        "id": "dropcaps-03",
+        "source": "/from_user/books/red gold illuminated initial frame.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-03-red-gold-illuminated-initial-frame.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 587
+      },
+      {
+        "id": "dropcaps-04",
+        "source": "/from_user/books/new/aged ink.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-04-aged-ink.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 612
+      },
+      {
+        "id": "dropcaps-05",
+        "source": "/from_user/books/new/cintric.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-05-cintric.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 593
+      },
+      {
+        "id": "dropcaps-06",
+        "source": "/from_user/books/new/herbal.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-06-herbal.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 615
+      },
+      {
+        "id": "dropcaps-07",
+        "source": "/from_user/books/new/royal.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-07-royal.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 620
+      },
+      {
+        "id": "dropcaps-08",
+        "source": "/from_user/books/new/royal2.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-08-royal2.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 616
+      },
+      {
+        "id": "dropcaps-09",
+        "source": "/from_user/books/new/slavic.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-09-slavic.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 627
+      },
+      {
+        "id": "dropcaps-10",
+        "source": "/from_user/books/new/vine.png",
+        "output": "/assets/manuscript/dropcaps/dropcaps-10-vine.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 630
+      }
+    ],
+    "corners": [
+      {
+        "id": "corners-01",
+        "source": "/from_user/corners/Celtic knot corner.png",
+        "output": "/assets/manuscript/corners/corners-01-celtic-knot-corner.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 604
+      },
+      {
+        "id": "corners-02",
+        "source": "/from_user/corners/gold acanthus corner.png",
+        "output": "/assets/manuscript/corners/corners-02-gold-acanthus-corner.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 638,
+        "height": 640
+      },
+      {
+        "id": "corners-03",
+        "source": "/from_user/corners/red gothic corner.png",
+        "output": "/assets/manuscript/corners/corners-03-red-gothic-corner.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 636,
+        "height": 640
+      },
+      {
+        "id": "corners-04",
+        "source": "/from_user/corners/top-left floral corner.png",
+        "output": "/assets/manuscript/corners/corners-04-top-left-floral-corner.png",
+        "sourceWidth": 1024,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": true,
+        "width": 640,
+        "height": 639
+      }
+    ],
+    "illustrations": [
+      {
+        "id": "illustrations-01",
+        "source": "/from_user/content/hand-drawn fantasy map on parchment, mountains, rivers, old roads, no labels, no readable text.png",
+        "output": "/assets/manuscript/illustrations/illustration-01-hand-drawn-fantasy-map-on-parchment-mountains-rivers-old-roads-no-labels-no-read.jpg",
+        "sourceWidth": 1536,
+        "sourceHeight": 1024,
+        "sourceHasAlpha": false,
+        "width": 1230,
+        "height": 820
+      },
+      {
+        "id": "illustrations-02",
+        "source": "/from_user/content/woodcut engraving scene, medieval travelers under moonlight, black ink, aged paper.png",
+        "output": "/assets/manuscript/illustrations/illustration-02-woodcut-engraving-scene-medieval-travelers-under-moonlight-black-ink-aged-paper.jpg",
+        "sourceWidth": 1402,
+        "sourceHeight": 1122,
+        "sourceHasAlpha": false,
+        "width": 960,
+        "height": 768
+      }
+    ],
+    "misc": []
+  }
+}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import '$lib/manuscript-fonts.css';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { auth } from '$lib/api';
