@@ -18,8 +18,8 @@ export interface Palette {
 }
 
 export interface Cover {
-	palette: Palette;
-	spineText: string;
+	palette?: Palette;
+	spineText?: string;
 	artUrl?: string | null;
 }
 
@@ -52,6 +52,7 @@ export interface ManuscriptSettings {
 
 export interface Book {
 	id: string;
+	userId?: string;
 	title: string;
 	titleRu?: string;
 	author: string;
@@ -59,6 +60,7 @@ export interface Book {
 	year?: number | null;
 	settings: ManuscriptSettings;
 	cover: Cover;
+	sourceMarkdown?: string;
 	pageCount: number;
 	createdAt: string;
 	updatedAt: string;
@@ -66,16 +68,27 @@ export interface Book {
 
 export interface Shelf {
 	id: string;
+	userId?: string;
 	name: string;
 	nameRu?: string;
 	position: number;
+	createdAt?: string;
 	books: string[]; // ordered book ids
 }
 
 export interface Share {
+	id?: string;
+	shelfId?: string;
 	token: string;
 	allowDownloads: boolean;
 	revoked: boolean;
+}
+
+export interface PublicShelf {
+	shelf: Shelf;
+	books: Book[];
+	allowDownloads: boolean;
+	ownerName: string;
 }
 
 /** A section of the AI-produced manuscript plan. */

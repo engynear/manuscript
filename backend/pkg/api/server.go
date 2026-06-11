@@ -7,9 +7,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
-	"github.com/engynear/manuscript/backend/internal/auth"
-	"github.com/engynear/manuscript/backend/internal/config"
-	"github.com/engynear/manuscript/backend/internal/store"
+	"github.com/engynear/manuscript/backend/pkg/auth"
+	"github.com/engynear/manuscript/backend/pkg/config"
+	"github.com/engynear/manuscript/backend/pkg/store"
 )
 
 // Server wires together the configuration, data store and auth manager
@@ -44,14 +44,32 @@ func (s *Server) Handler() http.Handler {
 	})
 
 	r.Route("/api", func(r chi.Router) {
-		// Public auth endpoints.
+		// Public endpoints.
 		r.Post("/auth/register", s.handleRegister)
 		r.Post("/auth/login", s.handleLogin)
+		r.Get("/s/{token}", s.handlePublicShelf)
 
 		// Authenticated endpoints.
 		r.Group(func(r chi.Router) {
 			r.Use(s.auth.Middleware)
 			r.Get("/auth/me", s.handleMe)
+
+			r.Get("/books", s.handleListBooks)
+			r.Post("/books", s.handleCreateBook)
+			r.Get("/books/{id}", s.handleGetBook)
+			r.Patch("/books/{id}", s.handleUpdateBook)
+			r.Delete("/books/{id}", s.handleDeleteBook)
+
+			r.Get("/shelves", s.handleListShelves)
+			r.Post("/shelves", s.handleCreateShelf)
+			r.Patch("/shelves/{id}", s.handleRenameShelf)
+			r.Delete("/shelves/{id}", s.handleDeleteShelf)
+			r.Put("/shelves/{id}/books", s.handleSetShelfBooks)
+
+			r.Get("/shelves/{id}/share", s.handleGetShare)
+			r.Post("/shelves/{id}/share", s.handleCreateShare)
+			r.Patch("/shelves/{id}/share", s.handleUpdateShare)
+			r.Post("/shelves/{id}/share/regenerate", s.handleRegenerateShare)
 		})
 	})
 

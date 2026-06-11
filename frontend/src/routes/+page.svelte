@@ -3,9 +3,9 @@
 	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { settings, SAMPLE_MD } from '$lib/settings';
-	import { currentUser } from '$lib/api';
+	import { currentUser, books as booksApi } from '$lib/api';
 	import Icon from '$lib/components/Icon.svelte';
-	import Manuscript from '$lib/components/Manuscript.svelte';
+	import ManuscriptPages from '$lib/components/ManuscriptPages.svelte';
 
 	let md = $state(SAMPLE_MD);
 	let tab = $state<'md' | 'upload'>('md');
@@ -42,6 +42,33 @@
 		if (f) {
 			md = await f.text();
 			tab = 'md';
+		}
+	}
+
+	let saving = $state(false);
+
+	function titleFromMd(src: string): string {
+		const line = src.split('\n').find((l) => l.startsWith('# '));
+		return line ? line.slice(2).trim() : 'Untitled';
+	}
+
+	async function saveToLibrary() {
+		if (!$currentUser) {
+			goto('/signin');
+			return;
+		}
+		saving = true;
+		try {
+			await booksApi.create({
+				title: titleFromMd(md),
+				author: $currentUser.displayName || '',
+				sourceMarkdown: md,
+				settings: $settings,
+				pageCount: md.split(/\n#{1,2}\s/).length
+			});
+			goto('/library');
+		} finally {
+			saving = false;
 		}
 	}
 
@@ -159,11 +186,8 @@
 						</div>
 					</div>
 				{:else}
-					<div
-						class="mf-fade-up"
-						style="max-width:560px;margin:0 auto;border-radius:6px;overflow:hidden;box-shadow:var(--shadow-lg)"
-					>
-						<Manuscript {md} settings={$settings} />
+					<div class="mf-fade-up">
+						<ManuscriptPages {md} settings={$settings} width={480} />
 					</div>
 				{/if}
 
@@ -228,7 +252,7 @@
 						<Icon name="image" size={16} />{$t('design_cover')}
 					</button>
 					<div style="flex:1"></div>
-					<button class="mf-btn mf-btn--gilt" onclick={() => goto($currentUser ? '/library' : '/signin')}>
+					<button class="mf-btn mf-btn--gilt" onclick={saveToLibrary} disabled={saving}>
 						{#if $currentUser}<Icon name="check" size={16} />{/if}{$t('save_lib')}
 					</button>
 				</div>

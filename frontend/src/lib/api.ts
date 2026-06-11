@@ -1,6 +1,7 @@
 import { writable, get } from 'svelte/store';
+import { browser } from '$app/environment';
 import { env } from '$env/dynamic/public';
-import type { AuthResponse, ProgressEvent, User } from './types';
+import type { AuthResponse, Book, ProgressEvent, PublicShelf, Shelf, Share, User } from './types';
 
 /** Base URL of the Go API. Falls back to same-origin (use a proxy in production). */
 export function apiBase(): string {
@@ -10,7 +11,7 @@ export function apiBase(): string {
 const TOKEN_KEY = 'mf_token';
 
 function initialToken(): string | null {
-	if (typeof localStorage !== 'undefined') return localStorage.getItem(TOKEN_KEY);
+	if (browser) return localStorage.getItem(TOKEN_KEY);
 	return null;
 }
 
@@ -18,7 +19,7 @@ export const token = writable<string | null>(initialToken());
 export const currentUser = writable<User | null>(null);
 
 token.subscribe((value) => {
-	if (typeof localStorage === 'undefined') return;
+	if (!browser) return;
 	if (value) localStorage.setItem(TOKEN_KEY, value);
 	else localStorage.removeItem(TOKEN_KEY);
 });
@@ -138,4 +139,41 @@ export const auth = {
 		token.set(null);
 		currentUser.set(null);
 	}
+};
+
+/* ---------------- library / shelves / shares ---------------- */
+
+export const books = {
+	list: () => request<Book[]>('/api/books'),
+	get: (id: string) => request<Book>(`/api/books/${id}`),
+	create: (body: Partial<Book> & { sourceMarkdown?: string }) =>
+		request<Book>('/api/books', { method: 'POST', body: JSON.stringify(body) }),
+	update: (id: string, body: Partial<Book>) =>
+		request<Book>(`/api/books/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+	remove: (id: string) => request<void>(`/api/books/${id}`, { method: 'DELETE' })
+};
+
+export const shelves = {
+	list: () => request<Shelf[]>('/api/shelves'),
+	create: (name: string, nameRu = '') =>
+		request<Shelf>('/api/shelves', { method: 'POST', body: JSON.stringify({ name, nameRu }) }),
+	rename: (id: string, name: string, nameRu = '') =>
+		request<Shelf>(`/api/shelves/${id}`, { method: 'PATCH', body: JSON.stringify({ name, nameRu }) }),
+	remove: (id: string) => request<void>(`/api/shelves/${id}`, { method: 'DELETE' }),
+	setBooks: (id: string, bookIds: string[]) =>
+		request<Shelf>(`/api/shelves/${id}/books`, { method: 'PUT', body: JSON.stringify({ books: bookIds }) })
+};
+
+export const shares = {
+	get: (shelfId: string) => request<Share>(`/api/shelves/${shelfId}/share`),
+	create: (shelfId: string) => request<Share>(`/api/shelves/${shelfId}/share`, { method: 'POST' }),
+	update: (shelfId: string, allowDownloads: boolean, revoked: boolean) =>
+		request<Share>(`/api/shelves/${shelfId}/share`, {
+			method: 'PATCH',
+			body: JSON.stringify({ allowDownloads, revoked })
+		}),
+	regenerate: (shelfId: string) =>
+		request<Share>(`/api/shelves/${shelfId}/share/regenerate`, { method: 'POST' }),
+	/** Public, unauthenticated read of a shared shelf. */
+	public: (token: string) => request<PublicShelf>(`/api/s/${token}`)
 };

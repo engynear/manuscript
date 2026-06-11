@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/engynear/manuscript/backend/internal/api"
-	"github.com/engynear/manuscript/backend/internal/auth"
-	"github.com/engynear/manuscript/backend/internal/config"
-	"github.com/engynear/manuscript/backend/internal/db"
-	"github.com/engynear/manuscript/backend/internal/store"
+	"github.com/engynear/manuscript/backend/pkg/api"
+	"github.com/engynear/manuscript/backend/pkg/auth"
+	"github.com/engynear/manuscript/backend/pkg/config"
+	"github.com/engynear/manuscript/backend/pkg/db"
+	"github.com/engynear/manuscript/backend/pkg/store"
 )
 
 func main() {

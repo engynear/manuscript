@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/engynear/manuscript/backend/internal/auth"
-	"github.com/engynear/manuscript/backend/internal/store"
+	"github.com/engynear/manuscript/backend/pkg/auth"
+	"github.com/engynear/manuscript/backend/pkg/store"
 )
 
 type authRequest struct {

@@ -41,7 +41,7 @@ services:
 
   web:
     build:
-      context: ./web
+      context: ./frontend
     container_name: manuscript-web
     restart: unless-stopped
     environment:

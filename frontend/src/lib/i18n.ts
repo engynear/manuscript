@@ -1,4 +1,5 @@
 import { writable, derived } from 'svelte/store';
+import { browser } from '$app/environment';
 
 export type Lang = 'en' | 'ru';
 
@@ -301,7 +302,7 @@ export const DICT: Record<Lang, Dict> = {
 const STORAGE_KEY = 'mf_lang';
 
 function initialLang(): Lang {
-	if (typeof localStorage !== 'undefined') {
+	if (browser) {
 		const saved = localStorage.getItem(STORAGE_KEY);
 		if (saved === 'en' || saved === 'ru') return saved;
 	}
@@ -311,8 +312,9 @@ function initialLang(): Lang {
 export const lang = writable<Lang>(initialLang());
 
 lang.subscribe((value) => {
-	if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, value);
-	if (typeof document !== 'undefined') document.documentElement.lang = value;
+	if (!browser) return;
+	localStorage.setItem(STORAGE_KEY, value);
+	document.documentElement.lang = value;
 });
 
 /** Reactive translator: use as `$t('nav_forge')` inside components. */
