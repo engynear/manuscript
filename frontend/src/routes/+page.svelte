@@ -81,7 +81,7 @@
 		style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);gap:22px;align-items:start"
 	>
 		<!-- left: input -->
-		<section class="mf-card" style="overflow:hidden">
+		<section class="mf-card mf-fade-up" style="overflow:hidden">
 			<div
 				style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)"
 			>
@@ -150,8 +150,8 @@
 
 		<!-- right: forged preview -->
 		<section
-			class="mf-card"
-			style="overflow:hidden;position:relative;min-height:540px;display:flex;flex-direction:column"
+			class="mf-card mf-fade-up"
+			style="overflow:hidden;position:relative;min-height:540px;display:flex;flex-direction:column;animation-delay:80ms"
 		>
 			<div
 				style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)"

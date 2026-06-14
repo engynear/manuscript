@@ -40,6 +40,7 @@
 		onmousedown={(e) => e.stopPropagation()}
 		role="dialog"
 		aria-modal="true"
+		tabindex="-1"
 		class="mf-card mf-fade-up"
 		style="width:min(440px,96vw);max-height:80vh;display:flex;flex-direction:column;background:var(--paper-card)"
 	>

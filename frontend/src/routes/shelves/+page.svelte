@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { t, lang } from '$lib/i18n';
-	import { shelves as shelvesApi, books as booksApi, currentUser } from '$lib/api';
+	import { shelves as shelvesApi, books as booksApi, currentUser, auth } from '$lib/api';
 	import type { Book, Shelf } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import BookSpine from '$lib/components/BookSpine.svelte';
@@ -63,8 +63,9 @@
 		shelves = shelves.map((x) => (x.id === s.id ? updated : x));
 	}
 
-	onMount(() => {
-		if (!$currentUser) {
+	onMount(async () => {
+		const user = $currentUser ?? (await auth.me());
+		if (!user) {
 			goto('/signin');
 			return;
 		}
@@ -87,9 +88,9 @@
 		<div style="text-align:center;padding:60px;color:var(--ink-faint)">…</div>
 	{/if}
 
-	{#each shelves as shelf (shelf.id)}
+	{#each shelves as shelf, si (shelf.id)}
 		{@const shelfBooks = shelf.books.map((id) => byId.get(id)).filter(Boolean) as Book[]}
-		<section style="margin-bottom:46px">
+		<section class="shelf-in" style="margin-bottom:46px;animation-delay:{si * 70}ms">
 			<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding-left:4px">
 				{#if editingId === shelf.id}
 					<!-- svelte-ignore a11y_autofocus -->
@@ -101,15 +102,13 @@
 						style="font-family:var(--font-display);font-size:21px;font-weight:600;border:none;border-bottom:2px solid var(--gilt);background:transparent;color:var(--ink);outline:none;padding:2px 0"
 					/>
 				{:else}
-					<h2
+					<button
+						class="shelf-name"
 						onclick={() => (editingId = shelf.id)}
-						role="button"
-						tabindex="0"
-						onkeydown={(e) => e.key === 'Enter' && (editingId = shelf.id)}
-						style="margin:0;font-family:var(--font-display);font-size:21px;font-weight:600;cursor:text"
+						title={$t('rename')}
 					>
 						{shelfName(shelf)}
-					</h2>
+					</button>
 				{/if}
 				<span class="mf-chip">{shelfBooks.length}</span>
 				<div style="flex:1"></div>
@@ -186,6 +185,7 @@
 			onmousedown={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
+			tabindex="-1"
 			class="mf-card mf-fade-up"
 			style="width:min(440px,96vw);max-height:80vh;display:flex;flex-direction:column;background:var(--paper-card)"
 		>
@@ -219,3 +219,31 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	.shelf-in {
+		animation: shelf-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+	}
+	@keyframes shelf-in {
+		from {
+			opacity: 0;
+			transform: translateY(16px);
+		}
+	}
+	.shelf-name {
+		margin: 0;
+		border: none;
+		background: none;
+		padding: 0;
+		font-family: var(--font-display);
+		font-size: 21px;
+		font-weight: 600;
+		color: var(--ink);
+		cursor: text;
+		border-bottom: 2px solid transparent;
+		transition: border-color 0.15s ease;
+	}
+	.shelf-name:hover {
+		border-bottom-color: var(--line-strong);
+	}
+</style>

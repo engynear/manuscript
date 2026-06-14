@@ -16,6 +16,7 @@
 </script>
 
 <button
+	class="spine"
 	onclick={onclick}
 	title={book.title}
 	style="width:{w}px;height:{h}px;position:relative;flex:0 0 auto;cursor:pointer;border:none;
@@ -45,3 +46,16 @@
 		<div style="height:1px;background:{pal.foil};opacity:.5"></div>
 	</div>
 </button>
+
+<style>
+	.spine {
+		transition:
+			transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+			box-shadow 0.2s ease;
+		transform-origin: bottom center;
+	}
+	.spine:hover {
+		transform: translateY(-10px);
+		box-shadow: var(--shadow-lg);
+	}
+</style>

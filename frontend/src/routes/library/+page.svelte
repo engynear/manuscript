@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
-	import { books as booksApi, currentUser } from '$lib/api';
+	import { books as booksApi, currentUser, auth } from '$lib/api';
 	import type { Book } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import BookCover from '$lib/components/BookCover.svelte';
@@ -45,8 +45,10 @@
 		books = books.filter((b) => b.id !== id);
 	}
 
-	onMount(() => {
-		if (!$currentUser) {
+	onMount(async () => {
+		// Wait for session restore before guarding (token may still be resolving).
+		const user = $currentUser ?? (await auth.me());
+		if (!user) {
 			goto('/signin');
 			return;
 		}
@@ -103,20 +105,23 @@
 		</div>
 	{:else}
 		<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:34px 28px">
-			{#each filtered as book (book.id)}
-				<div>
-					<div style="position:relative" class="book-card">
-						<BookCover {book} w={180} onclick={() => goto(`/reader/${book.id}`)} />
-						<div class="quick" style="position:absolute;top:10px;right:10px;display:grid;gap:7px">
+			{#each filtered as book, i (book.id)}
+				<div class="card-in" style="animation-delay:{Math.min(i, 12) * 45}ms">
+					<div class="book-card">
+						<div class="lift">
+							<BookCover {book} w={180} onclick={() => goto(`/library/${book.id}`)} />
+						</div>
+						<div class="quick">
 							<button class="qa" title={$t('read')} onclick={() => goto(`/reader/${book.id}`)}><Icon name="read" size={16} /></button>
+							<button class="qa" title={$t('edit_book')} onclick={() => goto(`/library/${book.id}`)}><Icon name="edit" size={16} /></button>
 							<button class="qa" title={$t('add_shelf')} onclick={() => (addToShelfBook = book.id)}><Icon name="shelves" size={16} /></button>
 							<button class="qa danger" title={$t('del')} onclick={() => remove(book.id)}><Icon name="trash" size={16} /></button>
 						</div>
 					</div>
-					<div style="margin-top:14px">
-						<div style="font-family:var(--font-display);font-weight:600;font-size:16px;line-height:1.2">{book.title}</div>
-						<div style="font-size:13.5px;color:var(--ink-faint);margin-top:3px">{$t('by')} {book.author}</div>
-					</div>
+					<button class="meta" onclick={() => goto(`/library/${book.id}`)}>
+						<div class="bt">{book.title}</div>
+						<div class="ba">{$t('by')} {book.author}</div>
+					</button>
 				</div>
 			{/each}
 		</div>
@@ -128,13 +133,63 @@
 {/if}
 
 <style>
+	.card-in {
+		animation: card-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+	}
+	@keyframes card-in {
+		from {
+			opacity: 0;
+			transform: translateY(14px);
+		}
+	}
+	.book-card {
+		position: relative;
+	}
+	/* hover lift on the cover, with a soft cast shadow underneath */
+	.lift {
+		position: relative;
+		transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+	.lift::after {
+		content: '';
+		position: absolute;
+		left: 8%;
+		right: 8%;
+		bottom: -8px;
+		height: 16px;
+		border-radius: 50%;
+		background: rgba(40, 28, 14, 0.22);
+		filter: blur(6px);
+		opacity: 0.5;
+		transition: opacity 0.22s ease;
+		z-index: -1;
+	}
+	.book-card:hover .lift,
+	.book-card:focus-within .lift {
+		transform: translateY(-6px);
+	}
+	.book-card:hover .lift::after,
+	.book-card:focus-within .lift::after {
+		opacity: 0.9;
+	}
 	.quick {
+		position: absolute;
+		top: 10px;
+		right: 10px;
+		display: grid;
+		gap: 7px;
 		opacity: 0;
-		transition: opacity 0.18s;
+		transform: translateX(6px);
+		transition:
+			opacity 0.18s ease,
+			transform 0.18s ease;
+		pointer-events: none;
 	}
 	.book-card:hover .quick,
 	.book-card:focus-within .quick {
 		opacity: 1;
+		transform: none;
+		pointer-events: auto;
 	}
 	.qa {
 		display: grid;
@@ -147,8 +202,41 @@
 		background: rgba(250, 245, 234, 0.95);
 		color: var(--ink-soft);
 		box-shadow: var(--shadow-sm);
+		transition:
+			background 0.15s ease,
+			color 0.15s ease;
+	}
+	.qa:hover {
+		background: #fff;
+		color: var(--oxblood);
 	}
 	.qa.danger {
 		color: var(--oxblood);
+	}
+	.meta {
+		display: block;
+		width: 100%;
+		margin-top: 14px;
+		padding: 0;
+		border: none;
+		background: none;
+		text-align: left;
+		cursor: pointer;
+	}
+	.bt {
+		font-family: var(--font-display);
+		font-weight: 600;
+		font-size: 16px;
+		line-height: 1.2;
+		color: var(--ink);
+		transition: color 0.15s ease;
+	}
+	.meta:hover .bt {
+		color: var(--oxblood);
+	}
+	.ba {
+		font-size: 13.5px;
+		color: var(--ink-faint);
+		margin-top: 3px;
 	}
 </style>

@@ -81,6 +81,7 @@
 		onmousedown={(e) => e.stopPropagation()}
 		role="dialog"
 		aria-modal="true"
+		tabindex="-1"
 		class="mf-card mf-fade-up"
 		style="width:min(460px,96vw);padding:28px;background:var(--paper-card)"
 	>
@@ -105,6 +106,7 @@
 				onclick={toggleShared}
 				disabled={busy}
 				aria-pressed={shared}
+				aria-label={$t('share')}
 				style="width:46px;height:26px;border-radius:100px;border:none;cursor:pointer;position:relative;background:{shared ? 'var(--oxblood)' : 'var(--line-strong)'}"
 			>
 				<span style="position:absolute;top:3px;left:{shared ? 23 : 3}px;width:20px;height:20px;border-radius:100px;background:#fff;transition:left .2s;box-shadow:var(--shadow-sm)"></span>
@@ -128,6 +130,7 @@
 					onclick={toggleDownloads}
 					disabled={busy}
 					aria-pressed={share.allowDownloads}
+					aria-label={$t('allow_dl')}
 					style="width:40px;height:23px;border-radius:100px;border:none;cursor:pointer;position:relative;background:{share.allowDownloads ? 'var(--gilt)' : 'var(--line-strong)'}"
 				>
 					<span style="position:absolute;top:3px;left:{share.allowDownloads ? 20 : 3}px;width:17px;height:17px;border-radius:100px;background:#fff;transition:left .2s"></span>

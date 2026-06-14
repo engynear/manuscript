@@ -16,6 +16,7 @@
 	const sc = $derived(w / 150);
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
 	role={onclick ? 'button' : undefined}
 	tabindex={onclick ? 0 : undefined}
