@@ -1,7 +1,17 @@
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { env } from '$env/dynamic/public';
-import type { AuthResponse, Book, ProgressEvent, PublicShelf, Shelf, Share, User } from './types';
+import type {
+	AuthResponse,
+	Book,
+	BookImage,
+	ManuscriptPlan,
+	ProgressEvent,
+	PublicShelf,
+	Shelf,
+	Share,
+	User
+} from './types';
 
 /** Base URL of the Go API. Falls back to same-origin (use a proxy in production). */
 export function apiBase(): string {
@@ -146,12 +156,58 @@ export const auth = {
 export const books = {
 	list: () => request<Book[]>('/api/books'),
 	get: (id: string) => request<Book>(`/api/books/${id}`),
-	create: (body: Partial<Book> & { sourceMarkdown?: string }) =>
-		request<Book>('/api/books', { method: 'POST', body: JSON.stringify(body) }),
+	create: (
+		body: Partial<Book> & {
+			sourceMarkdown?: string;
+			plan?: ManuscriptPlan | null;
+			contentHash?: string;
+			images?: BookImage[];
+		}
+	) => request<Book>('/api/books', { method: 'POST', body: JSON.stringify(body) }),
 	update: (id: string, body: Partial<Book>) =>
 		request<Book>(`/api/books/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
 	remove: (id: string) => request<void>(`/api/books/${id}`, { method: 'DELETE' })
 };
+
+/* ---------------- AI generation (Go OpenAI proxy) ---------------- */
+
+export const generate = {
+	/** Stream the AI manuscript plan. Resolves the `done` result payload. */
+	plan: (
+		body: { markdown: string; imageLimit: number },
+		onEvent: (event: ProgressEvent) => void
+	) => streamNDJSON('/api/plan', body, onEvent),
+	/** Stream illustration generation. Resolves the `done` result payload. */
+	images: (
+		body: { hash: string; plan: ManuscriptPlan; imageLimit: number },
+		onEvent: (event: ProgressEvent) => void
+	) => streamNDJSON('/api/images', body, onEvent)
+};
+
+/** Upload an image (e.g. cover art) and return its relative media URL (e.g. "/media/uploads/..."). */
+export async function uploadImage(file: File): Promise<string> {
+	const form = new FormData();
+	form.append('file', file);
+	const headers = new Headers();
+	const tok = get(token);
+	if (tok) headers.set('Authorization', `Bearer ${tok}`);
+	const res = await fetch(`${apiBase()}/api/upload`, {
+		method: 'POST',
+		headers,
+		credentials: 'include',
+		body: form
+	});
+	if (!res.ok) throw new ApiError(res.status, 'upload failed');
+	const { url } = (await res.json()) as { url: string };
+	return url;
+}
+
+/** Resolve a possibly-relative media URL (e.g. "/media/..") against the API base. */
+export function mediaUrl(url: string | undefined | null): string {
+	if (!url) return '';
+	if (/^https?:\/\//.test(url)) return url;
+	return `${apiBase()}${url}`;
+}
 
 export const shelves = {
 	list: () => request<Shelf[]>('/api/shelves'),

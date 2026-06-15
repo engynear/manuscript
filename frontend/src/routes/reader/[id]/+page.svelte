@@ -14,7 +14,13 @@
 	let error = $state('');
 
 	const settings = $derived<ManuscriptSettings>({ ...DEFAULT_SETTINGS, ...(book?.settings ?? {}) });
+	// The reader is Model B: every mode breaks at each h1/h2 (chapter-per-page),
+	// independent of the print page-break setting. Scroll mode reuses the paginated
+	// renderer, so force the chapter break here too for a consistent reading model.
+	const readerSettings = $derived<ManuscriptSettings>({ ...settings, chapterStart: 'newPage' });
 	const md = $derived(book?.sourceMarkdown || `# ${book?.title ?? ''}`);
+	const plan = $derived(book?.plan ?? null);
+	const images = $derived(book?.images ?? []);
 
 	// ---- reading mode (persisted) ----
 	type Mode = 'spread' | 'single' | 'scroll';
@@ -55,11 +61,16 @@
 			<div style="font-family:var(--font-display);font-size:16px">{book?.title ?? ''}</div>
 			<div style="font-size:12px;opacity:.7">{book?.author ?? ''}</div>
 		</div>
-		<div style="flex:1;display:flex;justify-content:flex-end">
-			{#if book?.contentHash}
-				<a class="reader-btn" href={`/media/generated/${book.contentHash}/manuscript.pdf`} download>
-					<Icon name="download" size={17} />{$t('redownload')}
-				</a>
+		<div style="flex:1;display:flex;justify-content:flex-end;gap:10px">
+			{#if book}
+				<button
+					class="reader-btn"
+					aria-label={$t('download')}
+					title={$t('download')}
+					onclick={() => window.open(`/print/${book?.id}`, '_blank')}
+				>
+					<Icon name="download" size={17} />
+				</button>
 			{/if}
 			<div class="rd-menu">
 				<button
@@ -102,7 +113,7 @@
 				<div style="color:#f0e2c8;margin-top:60px">{error}</div>
 			{:else if book}
 				<div class="mf-fade-up" style="padding:20px 0">
-					<ManuscriptPages {md} {settings} width={540} />
+					<ManuscriptPages {md} {plan} {images} settings={readerSettings} width={540} />
 				</div>
 			{/if}
 		</div>
@@ -115,7 +126,7 @@
 			{:else if book}
 				<div class="mf-fade-up" style="width:100%;height:100%">
 					{#key mode}
-						<BookSpread {md} {settings} {mode} />
+						<BookSpread {md} {plan} {images} {settings} {mode} />
 					{/key}
 				</div>
 			{/if}

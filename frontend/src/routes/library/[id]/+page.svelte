@@ -104,6 +104,9 @@
 					<button class="mf-btn mf-btn--primary" onclick={() => book && goto(`/reader/${book.id}`)}>
 						<Icon name="read" size={16} />{$t('read')}
 					</button>
+					<button class="mf-btn" onclick={() => book && goto(`/cover/${book.id}`)}>
+						<Icon name="image" size={16} />{$t('design_cover')}
+					</button>
 				</div>
 			</aside>
 

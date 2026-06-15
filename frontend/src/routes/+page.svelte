@@ -2,28 +2,34 @@
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
 	import { settings, SAMPLE_MD } from '$lib/settings';
-	import { auth, currentUser, books as booksApi, streamNDJSON } from '$lib/api';
+	import { auth, currentUser, books as booksApi, generate as genApi } from '$lib/api';
+	import type { BookImage, ManuscriptPlan, PlanResult, ImagesResult, ProgressEvent } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import ManuscriptPages from '$lib/components/ManuscriptPages.svelte';
-
-	type GenerateResult = {
-		hash: string;
-		title: string;
-		subtitle?: string;
-		previewHtml: string;
-		pdfUrl: string;
-		imageFailures: number;
-	};
 
 	let md = $state(SAMPLE_MD);
 	let tab = $state<'md' | 'upload'>('md');
 	let phase = $state<'empty' | 'forging' | 'done'>('empty');
 	let pct = $state(0);
-	let progressMessage = $state('');
-	let progressLog = $state<string[]>([]);
-	let result = $state<GenerateResult | null>(null);
-	let error = $state('');
+	let stepIdx = $state(0);
+	let errorMsg = $state('');
+
+	// Results of the latest generation, used by the preview + save.
+	let plan = $state<ManuscriptPlan | null>(null);
+	let images = $state<BookImage[]>([]);
+	let contentHash = $state('');
+
+	const steps = ['p_parse', 'p_paginate', 'p_illuminate', 'p_bind'];
 	const lineCount = $derived(md.split('\n').length);
+
+	// Map a streamed progress event onto the 4-step visual.
+	function applyProgress(e: ProgressEvent, base: number, span: number) {
+		if (typeof e.progress === 'number') pct = base + (e.progress / 100) * span;
+		// step phases: plan run → parse/paginate; image run → illuminate/bind
+		if (e.step === 'read' || e.step === 'normalize') stepIdx = 0;
+		else if (e.step === 'plan') stepIdx = 1;
+		else if (e.step?.startsWith('image')) stepIdx = Math.min(3, base >= 50 ? 3 : 2);
+	}
 
 	async function generate() {
 		const user = $currentUser ?? (await auth.me());
@@ -33,31 +39,40 @@
 		}
 		phase = 'forging';
 		pct = 0;
-		progressMessage = $t('generating');
-		progressLog = [];
-		result = null;
-		error = '';
+		stepIdx = 0;
+		errorMsg = '';
+		plan = null;
+		images = [];
+		contentHash = '';
+
+		const imageLimit = $settings.imageLimit ?? 0;
 		try {
-			await streamNDJSON('/api/generate', { markdown: md, settings: $settings }, (event) => {
-				if (typeof event.progress === 'number') pct = event.progress;
-				if (event.message) {
-					progressMessage = event.message;
-					progressLog = [...progressLog.slice(-4), event.message];
-				}
-				if (event.type === 'error') {
-					throw new Error(event.message || 'Generation failed');
-				}
-				if (event.type === 'done' && event.result) {
-					result = event.result as GenerateResult;
-					phase = 'done';
-					pct = 100;
+			// 1) Plan (0–55% of the bar).
+			await genApi.plan({ markdown: md, imageLimit }, (e) => {
+				applyProgress(e, 0, 55);
+				if (e.type === 'error') throw new Error(e.message || 'Plan generation failed');
+				if (e.type === 'done') {
+					const r = e.result as PlanResult;
+					plan = r.plan;
+					contentHash = r.hash;
 				}
 			});
-			if (!result) {
-				throw new Error('Generation finished without a result');
+
+			// 2) Illustrations (55–100%). Skipped server-side if none requested.
+			stepIdx = 2;
+			if (plan && imageLimit > 0) {
+				await genApi.images({ hash: contentHash, plan, imageLimit }, (e) => {
+					applyProgress(e, 55, 45);
+					if (e.type === 'error') throw new Error(e.message || 'Illustration generation failed');
+					if (e.type === 'done') images = (e.result as ImagesResult).images ?? [];
+				});
 			}
-		} catch (e) {
-			error = e instanceof Error ? e.message : 'Generation failed';
+
+			pct = 100;
+			stepIdx = 3;
+			setTimeout(() => (phase = 'done'), 300);
+		} catch (err) {
+			errorMsg = err instanceof Error ? err.message : 'Generation failed';
 			phase = 'empty';
 		}
 	}
@@ -71,34 +86,65 @@
 		}
 	}
 
+	let previewContainerW = $state(0);
+	// Subtract panel padding (22px × 2) so the page fits inside the card.
+	const previewWidth = $derived(previewContainerW > 0 ? previewContainerW - 44 : 480);
+
 	let saving = $state(false);
+	let downloading = $state(false);
+	let savedId = $state('');
 
 	function titleFromMd(src: string): string {
 		const line = src.split('\n').find((l) => l.startsWith('# '));
 		return line ? line.slice(2).trim() : 'Untitled';
 	}
 
-	async function saveToLibrary() {
+	/** Create the book once (or reuse the saved id). Returns its id, or null if sign-in is needed. */
+	async function persist(): Promise<string | null> {
 		if (!$currentUser) {
 			goto('/signin');
-			return;
+			return null;
 		}
+		if (savedId) return savedId;
+		const created = await booksApi.create({
+			title: plan?.title || titleFromMd(md),
+			subtitle: plan?.subtitle || '',
+			author: $currentUser.displayName || '',
+			sourceMarkdown: md,
+			plan,
+			contentHash,
+			images,
+			settings: $settings,
+			pageCount: md.split(/\n#{1,2}\s/).length
+		});
+		savedId = created.id;
+		return savedId;
+	}
+
+	async function saveToLibrary() {
 		saving = true;
 		try {
-			await booksApi.create({
-				title: result?.title || titleFromMd(md),
-				author: $currentUser.displayName || '',
-				sourceMarkdown: md,
-				contentHash: result?.hash ?? '',
-				settings: $settings,
-				pageCount: md.split(/\n#{1,2}\s/).length
-			});
-			goto('/library');
+			const id = await persist();
+			if (id) goto('/library');
 		} finally {
 			saving = false;
 		}
 	}
 
+	async function download() {
+		downloading = true;
+		try {
+			const id = await persist();
+			if (id) window.open(`/print/${id}`, '_blank');
+		} finally {
+			downloading = false;
+		}
+	}
+
+	async function designCover() {
+		const id = await persist();
+		if (id) goto(`/cover/${id}`);
+	}
 </script>
 
 <div style="max-width:1320px;margin:0 auto;padding:26px 26px 60px">
@@ -172,9 +218,17 @@
 					<Icon name="forge" size={17} />{phase === 'forging' ? $t('generating') : $t('generate')}
 				</button>
 			</div>
+			{#if errorMsg}
+				<div
+					style="margin:0 18px 18px;padding:10px 14px;border-radius:8px;background:rgba(122,23,15,.08);border:1px solid rgba(122,23,15,.25);color:var(--oxblood);font-size:13.5px"
+				>
+					{errorMsg}
+				</div>
+			{/if}
 		</section>
 
 		<!-- right: forged preview -->
+		<div bind:clientWidth={previewContainerW} style="min-width:0">
 		<section
 			class="mf-card mf-fade-up"
 			style="overflow:hidden;position:relative;min-height:540px;display:flex;flex-direction:column;animation-delay:80ms"
@@ -211,15 +265,9 @@
 							</div>
 						</div>
 					</div>
-				{:else if result}
-					<iframe
-						title="Manuscript preview"
-						srcdoc={result.previewHtml}
-						style="display:block;width:100%;min-height:680px;border:0;background:#2b2118;border-radius:8px"
-					></iframe>
 				{:else}
 					<div class="mf-fade-up">
-						<ManuscriptPages {md} settings={$settings} width={480} />
+						<ManuscriptPages {md} {plan} {images} settings={$settings} width={previewWidth} />
 					</div>
 				{/if}
 
@@ -242,49 +290,35 @@
 								></div>
 							</div>
 							<div style="display:grid;gap:9px;text-align:left;justify-content:center">
-								{#if progressLog.length}
-									{#each progressLog as st, i}
-										<div
-											style="display:flex;align-items:center;gap:10px;font-size:15px;color:{i === progressLog.length - 1
-												? 'var(--oxblood)'
-												: 'var(--ink)'};font-weight:{i === progressLog.length - 1 ? 600 : 400}"
-										>
-											<span
-												style="width:18px;height:18px;border-radius:100px;display:grid;place-items:center;flex:0 0 auto;border:1.5px solid var(--oxblood);background:{i ===
-												progressLog.length - 1
-													? 'transparent'
-													: 'var(--oxblood)'};color:#f0dcc0"
-											>
-												{#if i === progressLog.length - 1}
-													<span style="width:6px;height:6px;border-radius:100px;background:var(--oxblood)"></span>
-												{:else}
-													<Icon name="check" size={11} stroke={2.6} />
-												{/if}
-											</span>
-											{st}
-										</div>
-									{/each}
-								{:else}
+								{#each steps as step, i}
 									<div
-										style="display:flex;align-items:center;gap:10px;font-size:15px;color:var(--oxblood);font-weight:600"
+										style="display:flex;align-items:center;gap:10px;font-size:15px;color:{i === stepIdx
+											? 'var(--oxblood)'
+											: 'var(--ink)'};font-weight:{i === stepIdx ? 600 : 400}"
 									>
 										<span
-											style="width:18px;height:18px;border-radius:100px;display:grid;place-items:center;flex:0 0 auto;border:1.5px solid var(--oxblood)"
+											style="width:18px;height:18px;border-radius:100px;display:grid;place-items:center;flex:0 0 auto;border:1.5px solid var(--oxblood);background:{i < stepIdx
+												? 'var(--oxblood)'
+												: 'transparent'};color:#f0dcc0"
 										>
-											<span style="width:6px;height:6px;border-radius:100px;background:var(--oxblood)"></span>
+											{#if i < stepIdx}
+												<Icon name="check" size={11} stroke={2.6} />
+											{:else if i === stepIdx}
+												<span style="width:6px;height:6px;border-radius:100px;background:var(--oxblood)"></span>
+											{/if}
 										</span>
-										{progressMessage}
+										{$t(step)}
 									</div>
-								{/if}
+								{/each}
 							</div>
 						</div>
 					</div>
 				{/if}
 			</div>
 
-			{#if error}
+			{#if errorMsg}
 				<div class="mf-fade" style="padding:12px 18px;border-top:1px solid var(--line);color:var(--oxblood)">
-					{error}
+					{errorMsg}
 				</div>
 			{/if}
 
@@ -293,10 +327,8 @@
 					class="mf-fade"
 					style="display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--line);flex-wrap:wrap"
 				>
-					<a class="mf-btn mf-btn--primary" href={result?.pdfUrl ?? '#'} download>
-						<Icon name="download" size={16} />{$t('download')}
-					</a>
-					<button class="mf-btn" onclick={() => goto('/cover/new')}>
+					<button class="mf-btn mf-btn--primary" onclick={download} disabled={downloading}><Icon name="download" size={16} />{$t('download')}</button>
+					<button class="mf-btn" onclick={designCover}>
 						<Icon name="image" size={16} />{$t('design_cover')}
 					</button>
 					<div style="flex:1"></div>
@@ -306,5 +338,6 @@
 				</div>
 			{/if}
 		</section>
+		</div>
 	</div>
 </div>

@@ -9,6 +9,7 @@ import (
 
 	"github.com/engynear/manuscript/backend/pkg/auth"
 	"github.com/engynear/manuscript/backend/pkg/config"
+	"github.com/engynear/manuscript/backend/pkg/forge"
 	"github.com/engynear/manuscript/backend/pkg/store"
 )
 
@@ -18,10 +19,15 @@ type Server struct {
 	cfg   *config.Config
 	store *store.Store
 	auth  *auth.Manager
+	forge *forge.Client // OpenAI proxy; nil when OPENAI_API_KEY is unset
 }
 
 func NewServer(cfg *config.Config, st *store.Store, am *auth.Manager) *Server {
-	return &Server{cfg: cfg, store: st, auth: am}
+	var fc *forge.Client
+	if cfg.OpenAIKey != "" {
+		fc = forge.NewClient(cfg.OpenAIKey, cfg.PlanModel, cfg.ImageModel, cfg.ImageQuality)
+	}
+	return &Server{cfg: cfg, store: st, auth: am, forge: fc}
 }
 
 // Handler builds the chi router with middleware and all routes mounted.
@@ -53,6 +59,13 @@ func (s *Server) Handler() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(s.auth.Middleware)
 			r.Get("/auth/me", s.handleMe)
+
+			// AI generation (OpenAI proxy, streams NDJSON progress).
+			r.Post("/plan", s.handlePlan)
+			r.Post("/images", s.handleImages)
+
+			// User uploads (e.g. cover art).
+			r.Post("/upload", s.handleUpload)
 
 			r.Get("/books", s.handleListBooks)
 			r.Post("/books", s.handleCreateBook)
