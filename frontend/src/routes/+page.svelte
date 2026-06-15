@@ -1,39 +1,65 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { settings, SAMPLE_MD } from '$lib/settings';
-	import { currentUser, books as booksApi } from '$lib/api';
+	import { auth, currentUser, books as booksApi, streamNDJSON } from '$lib/api';
 	import Icon from '$lib/components/Icon.svelte';
 	import ManuscriptPages from '$lib/components/ManuscriptPages.svelte';
+
+	type GenerateResult = {
+		hash: string;
+		title: string;
+		subtitle?: string;
+		previewHtml: string;
+		pdfUrl: string;
+		imageFailures: number;
+	};
 
 	let md = $state(SAMPLE_MD);
 	let tab = $state<'md' | 'upload'>('md');
 	let phase = $state<'empty' | 'forging' | 'done'>('empty');
 	let pct = $state(0);
-	let stepIdx = $state(0);
-	let timer: ReturnType<typeof setInterval> | undefined;
-
-	const steps = ['p_parse', 'p_paginate', 'p_illuminate', 'p_bind'];
+	let progressMessage = $state('');
+	let progressLog = $state<string[]>([]);
+	let result = $state<GenerateResult | null>(null);
+	let error = $state('');
 	const lineCount = $derived(md.split('\n').length);
 
-	// NOTE: Phase 2 replaces this simulated run with streamNDJSON('/api/plan', …).
-	function generate() {
+	async function generate() {
+		const user = $currentUser ?? (await auth.me());
+		if (!user) {
+			goto('/signin');
+			return;
+		}
 		phase = 'forging';
 		pct = 0;
-		stepIdx = 0;
-		let p = 0;
-		clearInterval(timer);
-		timer = setInterval(() => {
-			p += 2 + Math.random() * 5;
-			if (p > 100) p = 100;
-			pct = p;
-			stepIdx = Math.min(3, Math.floor(p / 25));
-			if (p >= 100) {
-				clearInterval(timer);
-				setTimeout(() => (phase = 'done'), 380);
+		progressMessage = $t('generating');
+		progressLog = [];
+		result = null;
+		error = '';
+		try {
+			await streamNDJSON('/api/generate', { markdown: md, settings: $settings }, (event) => {
+				if (typeof event.progress === 'number') pct = event.progress;
+				if (event.message) {
+					progressMessage = event.message;
+					progressLog = [...progressLog.slice(-4), event.message];
+				}
+				if (event.type === 'error') {
+					throw new Error(event.message || 'Generation failed');
+				}
+				if (event.type === 'done' && event.result) {
+					result = event.result as GenerateResult;
+					phase = 'done';
+					pct = 100;
+				}
+			});
+			if (!result) {
+				throw new Error('Generation finished without a result');
 			}
-		}, 95);
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Generation failed';
+			phase = 'empty';
+		}
 	}
 
 	async function onFile(e: Event) {
@@ -60,9 +86,10 @@
 		saving = true;
 		try {
 			await booksApi.create({
-				title: titleFromMd(md),
+				title: result?.title || titleFromMd(md),
 				author: $currentUser.displayName || '',
 				sourceMarkdown: md,
+				contentHash: result?.hash ?? '',
 				settings: $settings,
 				pageCount: md.split(/\n#{1,2}\s/).length
 			});
@@ -72,7 +99,6 @@
 		}
 	}
 
-	onDestroy(() => clearInterval(timer));
 </script>
 
 <div style="max-width:1320px;margin:0 auto;padding:26px 26px 60px">
@@ -185,6 +211,12 @@
 							</div>
 						</div>
 					</div>
+				{:else if result}
+					<iframe
+						title="Manuscript preview"
+						srcdoc={result.previewHtml}
+						style="display:block;width:100%;min-height:680px;border:0;background:#2b2118;border-radius:8px"
+					></iframe>
 				{:else}
 					<div class="mf-fade-up">
 						<ManuscriptPages {md} settings={$settings} width={480} />
@@ -210,44 +242,60 @@
 								></div>
 							</div>
 							<div style="display:grid;gap:9px;text-align:left;justify-content:center">
-								{#each steps as st, i}
-									<div
-										style="display:flex;align-items:center;gap:10px;font-size:15px;
-											color:{i < stepIdx
-											? 'var(--ink)'
-											: i === stepIdx
+								{#if progressLog.length}
+									{#each progressLog as st, i}
+										<div
+											style="display:flex;align-items:center;gap:10px;font-size:15px;color:{i === progressLog.length - 1
 												? 'var(--oxblood)'
-												: 'var(--ink-faint)'};
-											font-weight:{i === stepIdx ? 600 : 400}"
+												: 'var(--ink)'};font-weight:{i === progressLog.length - 1 ? 600 : 400}"
+										>
+											<span
+												style="width:18px;height:18px;border-radius:100px;display:grid;place-items:center;flex:0 0 auto;border:1.5px solid var(--oxblood);background:{i ===
+												progressLog.length - 1
+													? 'transparent'
+													: 'var(--oxblood)'};color:#f0dcc0"
+											>
+												{#if i === progressLog.length - 1}
+													<span style="width:6px;height:6px;border-radius:100px;background:var(--oxblood)"></span>
+												{:else}
+													<Icon name="check" size={11} stroke={2.6} />
+												{/if}
+											</span>
+											{st}
+										</div>
+									{/each}
+								{:else}
+									<div
+										style="display:flex;align-items:center;gap:10px;font-size:15px;color:var(--oxblood);font-weight:600"
 									>
 										<span
-											style="width:18px;height:18px;border-radius:100px;display:grid;place-items:center;flex:0 0 auto;
-												border:1.5px solid {i <= stepIdx ? 'var(--oxblood)' : 'var(--line-strong)'};
-												background:{i < stepIdx ? 'var(--oxblood)' : 'transparent'};color:#f0dcc0"
+											style="width:18px;height:18px;border-radius:100px;display:grid;place-items:center;flex:0 0 auto;border:1.5px solid var(--oxblood)"
 										>
-											{#if i < stepIdx}
-												<Icon name="check" size={11} stroke={2.6} />
-											{:else if i === stepIdx}
-												<span
-													style="width:6px;height:6px;border-radius:100px;background:var(--oxblood)"
-												></span>
-											{/if}
+											<span style="width:6px;height:6px;border-radius:100px;background:var(--oxblood)"></span>
 										</span>
-										{$t(st)}
+										{progressMessage}
 									</div>
-								{/each}
+								{/if}
 							</div>
 						</div>
 					</div>
 				{/if}
 			</div>
 
+			{#if error}
+				<div class="mf-fade" style="padding:12px 18px;border-top:1px solid var(--line);color:var(--oxblood)">
+					{error}
+				</div>
+			{/if}
+
 			{#if phase === 'done'}
 				<div
 					class="mf-fade"
 					style="display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--line);flex-wrap:wrap"
 				>
-					<button class="mf-btn mf-btn--primary"><Icon name="download" size={16} />{$t('download')}</button>
+					<a class="mf-btn mf-btn--primary" href={result?.pdfUrl ?? '#'} download>
+						<Icon name="download" size={16} />{$t('download')}
+					</a>
 					<button class="mf-btn" onclick={() => goto('/cover/new')}>
 						<Icon name="image" size={16} />{$t('design_cover')}
 					</button>

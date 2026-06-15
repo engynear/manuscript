@@ -52,6 +52,7 @@
 				settings: book.settings,
 				cover: { palette, spineText: spineText.trim(), artUrl: book.cover?.artUrl ?? null },
 				sourceMarkdown: book.sourceMarkdown ?? '',
+				contentHash: book.contentHash ?? '',
 				pageCount: book.pageCount
 			});
 			load(updated);

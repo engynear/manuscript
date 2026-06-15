@@ -21,6 +21,7 @@ type Book struct {
 	Settings       json.RawMessage `json:"settings"`
 	Cover          json.RawMessage `json:"cover"`
 	SourceMarkdown string          `json:"sourceMarkdown"`
+	ContentHash    string          `json:"contentHash"`
 	PageCount      int             `json:"pageCount"`
 	CreatedAt      time.Time       `json:"createdAt"`
 	UpdatedAt      time.Time       `json:"updatedAt"`
@@ -36,6 +37,7 @@ type BookInput struct {
 	Settings       json.RawMessage `json:"settings"`
 	Cover          json.RawMessage `json:"cover"`
 	SourceMarkdown string          `json:"sourceMarkdown"`
+	ContentHash    string          `json:"contentHash"`
 	PageCount      int             `json:"pageCount"`
 }
 
@@ -50,7 +52,7 @@ func scanBook(row pgx.Row) (*Book, error) {
 	b := &Book{}
 	var settings, cover []byte
 	err := row.Scan(&b.ID, &b.UserID, &b.Title, &b.TitleRu, &b.Author, &b.Subtitle, &b.Year,
-		&settings, &cover, &b.SourceMarkdown, &b.PageCount, &b.CreatedAt, &b.UpdatedAt)
+		&settings, &cover, &b.SourceMarkdown, &b.ContentHash, &b.PageCount, &b.CreatedAt, &b.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -60,15 +62,15 @@ func scanBook(row pgx.Row) (*Book, error) {
 }
 
 const bookCols = `id, user_id, title, title_ru, author, subtitle, year,
-	settings, cover, source_markdown, page_count, created_at, updated_at`
+	settings, cover, source_markdown, content_hash, page_count, created_at, updated_at`
 
 func (s *Store) CreateBook(ctx context.Context, userID uuid.UUID, in BookInput) (*Book, error) {
 	return scanBook(s.pool.QueryRow(ctx, `
-		INSERT INTO books (user_id, title, title_ru, author, subtitle, year, settings, cover, source_markdown, page_count)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+		INSERT INTO books (user_id, title, title_ru, author, subtitle, year, settings, cover, source_markdown, content_hash, page_count)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 		RETURNING `+bookCols,
 		userID, in.Title, in.TitleRu, in.Author, in.Subtitle, in.Year,
-		jsonOrEmpty(in.Settings), jsonOrEmpty(in.Cover), in.SourceMarkdown, in.PageCount))
+		jsonOrEmpty(in.Settings), jsonOrEmpty(in.Cover), in.SourceMarkdown, in.ContentHash, in.PageCount))
 }
 
 func (s *Store) ListBooks(ctx context.Context, userID uuid.UUID) ([]*Book, error) {
@@ -99,11 +101,11 @@ func (s *Store) GetBook(ctx context.Context, userID, id uuid.UUID) (*Book, error
 func (s *Store) UpdateBook(ctx context.Context, userID, id uuid.UUID, in BookInput) (*Book, error) {
 	b, err := scanBook(s.pool.QueryRow(ctx, `
 		UPDATE books SET title=$3, title_ru=$4, author=$5, subtitle=$6, year=$7,
-			settings=$8, cover=$9, source_markdown=$10, page_count=$11, updated_at=now()
+			settings=$8, cover=$9, source_markdown=$10, content_hash=$11, page_count=$12, updated_at=now()
 		WHERE id=$1 AND user_id=$2
 		RETURNING `+bookCols,
 		id, userID, in.Title, in.TitleRu, in.Author, in.Subtitle, in.Year,
-		jsonOrEmpty(in.Settings), jsonOrEmpty(in.Cover), in.SourceMarkdown, in.PageCount))
+		jsonOrEmpty(in.Settings), jsonOrEmpty(in.Cover), in.SourceMarkdown, in.ContentHash, in.PageCount))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}

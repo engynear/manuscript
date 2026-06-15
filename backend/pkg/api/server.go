@@ -70,6 +70,8 @@ func (s *Server) Handler() http.Handler {
 			r.Post("/shelves/{id}/share", s.handleCreateShare)
 			r.Patch("/shelves/{id}/share", s.handleUpdateShare)
 			r.Post("/shelves/{id}/share/regenerate", s.handleRegenerateShare)
+
+			r.Post("/generate", s.handleGenerateManuscript)
 		})
 	})
 

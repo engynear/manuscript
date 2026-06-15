@@ -1,7 +1,7 @@
 # ---- build stage ----
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
-COPY package.json package-lock.jso[n] ./
+COPY package.json ./
 RUN npm install
 COPY . .
 RUN npm run build

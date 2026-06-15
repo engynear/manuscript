@@ -61,6 +61,7 @@ export interface Book {
 	settings: ManuscriptSettings;
 	cover: Cover;
 	sourceMarkdown?: string;
+	contentHash?: string;
 	pageCount: number;
 	createdAt: string;
 	updatedAt: string;

@@ -56,6 +56,11 @@
 			<div style="font-size:12px;opacity:.7">{book?.author ?? ''}</div>
 		</div>
 		<div style="flex:1;display:flex;justify-content:flex-end">
+			{#if book?.contentHash}
+				<a class="reader-btn" href={`/media/generated/${book.contentHash}/manuscript.pdf`} download>
+					<Icon name="download" size={17} />{$t('redownload')}
+				</a>
+			{/if}
 			<div class="rd-menu">
 				<button
 					class="reader-btn"
