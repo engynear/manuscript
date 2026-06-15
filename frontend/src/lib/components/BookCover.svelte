@@ -14,6 +14,23 @@
 	const pal = $derived(paletteFor(book));
 	const h = $derived(Math.round(w * 1.5));
 	const sc = $derived(w / 150);
+
+	// Shrink long titles so the whole thing fits within the cover's text block
+	// without breaking words — size against both total length and the longest word.
+	const titleSize = $derived(
+		(() => {
+			const base = Math.max(11, 17 * sc);
+			const t = book.title || '';
+			const len = t.length;
+			const longest = t.split(/\s+/).reduce((m, w) => Math.max(m, w.length), 0);
+			// usable width of the title block ≈ 80% of the cover, advance ≈ 0.56·size
+			const widthPx = w * 0.8;
+			const byWord = widthPx / (Math.max(1, longest) * 0.68);
+			const byLen = len <= 18 ? base : base * (18 / len);
+			const min = Math.max(9, 11 * sc);
+			return Math.max(min, Math.min(base, byWord, byLen));
+		})()
+	);
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
@@ -56,7 +73,8 @@
 		<div style="position:absolute;left:12%;right:8%;bottom:7%;text-align:left">
 			<div
 				style="font-family:var(--font-display);font-weight:700;line-height:1.08;color:{pal.fg};
-					font-size:{Math.max(11, 17 * sc)}px;letter-spacing:.01em;text-shadow:0 1px 1px rgba(0,0,0,.4)"
+					font-size:{titleSize}px;letter-spacing:.01em;text-shadow:0 1px 1px rgba(0,0,0,.4);
+					overflow-wrap:break-word"
 			>
 				{book.title}
 			</div>
