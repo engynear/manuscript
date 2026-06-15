@@ -1,0 +1,29 @@
+name: Deploy staging
+
+on:
+  push:
+    branches:
+      - stg
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy staging on VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+
+            cd /home/engynear/apps/manuscript-stg
+
+            git fetch origin stg
+            git reset --hard origin/stg
+
+            docker compose up -d --build
+
+            docker image prune -f
