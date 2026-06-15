@@ -112,6 +112,25 @@
 				</div>
 			</section>
 
+			<!-- page size -->
+			<section style="border-top:1px solid var(--line);padding:18px 0">
+				<h3 style="margin:0;font-family:var(--font-display);font-size:16px">{$t('set_pagesize')}</h3>
+				<p style="margin:2px 0 10px;font-size:13px;color:var(--ink-faint)">{$t('set_pagesize_sub')}</p>
+				<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+					{#each [['a4', 'ps_a4'], ['letter', 'ps_letter']] as [value, key]}
+						<button
+							onclick={() => set('pageSize', value as ManuscriptSettings['pageSize'])}
+							style="padding:10px;border-radius:8px;font-weight:700;cursor:pointer;
+								border:{draft.pageSize === value
+								? '1px solid var(--oxblood)'
+								: '1px solid var(--line-strong)'};
+								background:{draft.pageSize === value ? 'var(--oxblood)' : 'var(--paper-edge)'};
+								color:{draft.pageSize === value ? '#fff4d6' : 'var(--ink)'}">{$t(key)}</button
+						>
+					{/each}
+				</div>
+			</section>
+
 			<!-- font -->
 			<section style="border-top:1px solid var(--line);padding:18px 0">
 				<h3 style="margin:0;font-family:var(--font-display);font-size:16px">{$t('s_font')}</h3>

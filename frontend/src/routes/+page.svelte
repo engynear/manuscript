@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { settings, SAMPLE_MD } from '$lib/settings';
-	import { currentUser, books as booksApi } from '$lib/api';
+	import { currentUser, books as booksApi, generate as genApi } from '$lib/api';
+	import type { BookImage, ManuscriptPlan, PlanResult, ImagesResult, ProgressEvent } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import ManuscriptPages from '$lib/components/ManuscriptPages.svelte';
 
@@ -12,28 +12,64 @@
 	let phase = $state<'empty' | 'forging' | 'done'>('empty');
 	let pct = $state(0);
 	let stepIdx = $state(0);
-	let timer: ReturnType<typeof setInterval> | undefined;
+	let errorMsg = $state('');
+
+	// Results of the latest generation, used by the preview + save.
+	let plan = $state<ManuscriptPlan | null>(null);
+	let images = $state<BookImage[]>([]);
+	let contentHash = $state('');
 
 	const steps = ['p_parse', 'p_paginate', 'p_illuminate', 'p_bind'];
 	const lineCount = $derived(md.split('\n').length);
 
-	// NOTE: Phase 2 replaces this simulated run with streamNDJSON('/api/plan', …).
-	function generate() {
+	// Map a streamed progress event onto the 4-step visual.
+	function applyProgress(e: ProgressEvent, base: number, span: number) {
+		if (typeof e.progress === 'number') pct = base + (e.progress / 100) * span;
+		// step phases: plan run → parse/paginate; image run → illuminate/bind
+		if (e.step === 'read' || e.step === 'normalize') stepIdx = 0;
+		else if (e.step === 'plan') stepIdx = 1;
+		else if (e.step?.startsWith('image')) stepIdx = Math.min(3, base >= 50 ? 3 : 2);
+	}
+
+	async function generate() {
 		phase = 'forging';
 		pct = 0;
 		stepIdx = 0;
-		let p = 0;
-		clearInterval(timer);
-		timer = setInterval(() => {
-			p += 2 + Math.random() * 5;
-			if (p > 100) p = 100;
-			pct = p;
-			stepIdx = Math.min(3, Math.floor(p / 25));
-			if (p >= 100) {
-				clearInterval(timer);
-				setTimeout(() => (phase = 'done'), 380);
+		errorMsg = '';
+		plan = null;
+		images = [];
+		contentHash = '';
+
+		const imageLimit = $settings.imageLimit ?? 0;
+		try {
+			// 1) Plan (0–55% of the bar).
+			await genApi.plan({ markdown: md, imageLimit }, (e) => {
+				applyProgress(e, 0, 55);
+				if (e.type === 'error') throw new Error(e.message || 'Plan generation failed');
+				if (e.type === 'done') {
+					const r = e.result as PlanResult;
+					plan = r.plan;
+					contentHash = r.hash;
+				}
+			});
+
+			// 2) Illustrations (55–100%). Skipped server-side if none requested.
+			stepIdx = 2;
+			if (plan && imageLimit > 0) {
+				await genApi.images({ hash: contentHash, plan, imageLimit }, (e) => {
+					applyProgress(e, 55, 45);
+					if (e.type === 'error') throw new Error(e.message || 'Illustration generation failed');
+					if (e.type === 'done') images = (e.result as ImagesResult).images ?? [];
+				});
 			}
-		}, 95);
+
+			pct = 100;
+			stepIdx = 3;
+			setTimeout(() => (phase = 'done'), 300);
+		} catch (err) {
+			errorMsg = err instanceof Error ? err.message : 'Generation failed';
+			phase = 'empty';
+		}
 	}
 
 	async function onFile(e: Event) {
@@ -45,34 +81,65 @@
 		}
 	}
 
+	let previewContainerW = $state(0);
+	// Subtract panel padding (22px × 2) so the page fits inside the card.
+	const previewWidth = $derived(previewContainerW > 0 ? previewContainerW - 44 : 480);
+
 	let saving = $state(false);
+	let downloading = $state(false);
+	let savedId = $state('');
 
 	function titleFromMd(src: string): string {
 		const line = src.split('\n').find((l) => l.startsWith('# '));
 		return line ? line.slice(2).trim() : 'Untitled';
 	}
 
-	async function saveToLibrary() {
+	/** Create the book once (or reuse the saved id). Returns its id, or null if sign-in is needed. */
+	async function persist(): Promise<string | null> {
 		if (!$currentUser) {
 			goto('/signin');
-			return;
+			return null;
 		}
+		if (savedId) return savedId;
+		const created = await booksApi.create({
+			title: plan?.title || titleFromMd(md),
+			subtitle: plan?.subtitle || '',
+			author: $currentUser.displayName || '',
+			sourceMarkdown: md,
+			plan,
+			contentHash,
+			images,
+			settings: $settings,
+			pageCount: md.split(/\n#{1,2}\s/).length
+		});
+		savedId = created.id;
+		return savedId;
+	}
+
+	async function saveToLibrary() {
 		saving = true;
 		try {
-			await booksApi.create({
-				title: titleFromMd(md),
-				author: $currentUser.displayName || '',
-				sourceMarkdown: md,
-				settings: $settings,
-				pageCount: md.split(/\n#{1,2}\s/).length
-			});
-			goto('/library');
+			const id = await persist();
+			if (id) goto('/library');
 		} finally {
 			saving = false;
 		}
 	}
 
-	onDestroy(() => clearInterval(timer));
+	async function download() {
+		downloading = true;
+		try {
+			const id = await persist();
+			if (id) window.open(`/print/${id}`, '_blank');
+		} finally {
+			downloading = false;
+		}
+	}
+
+	async function designCover() {
+		const id = await persist();
+		if (id) goto(`/cover/${id}`);
+	}
 </script>
 
 <div style="max-width:1320px;margin:0 auto;padding:26px 26px 60px">
@@ -146,9 +213,17 @@
 					<Icon name="forge" size={17} />{phase === 'forging' ? $t('generating') : $t('generate')}
 				</button>
 			</div>
+			{#if errorMsg}
+				<div
+					style="margin:0 18px 18px;padding:10px 14px;border-radius:8px;background:rgba(122,23,15,.08);border:1px solid rgba(122,23,15,.25);color:var(--oxblood);font-size:13.5px"
+				>
+					{errorMsg}
+				</div>
+			{/if}
 		</section>
 
 		<!-- right: forged preview -->
+		<div bind:clientWidth={previewContainerW} style="min-width:0">
 		<section
 			class="mf-card mf-fade-up"
 			style="overflow:hidden;position:relative;min-height:540px;display:flex;flex-direction:column;animation-delay:80ms"
@@ -187,7 +262,7 @@
 					</div>
 				{:else}
 					<div class="mf-fade-up">
-						<ManuscriptPages {md} settings={$settings} width={480} />
+						<ManuscriptPages {md} {plan} {images} settings={$settings} width={previewWidth} />
 					</div>
 				{/if}
 
@@ -247,8 +322,8 @@
 					class="mf-fade"
 					style="display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--line);flex-wrap:wrap"
 				>
-					<button class="mf-btn mf-btn--primary"><Icon name="download" size={16} />{$t('download')}</button>
-					<button class="mf-btn" onclick={() => goto('/cover/new')}>
+					<button class="mf-btn mf-btn--primary" onclick={download} disabled={downloading}><Icon name="download" size={16} />{$t('download')}</button>
+					<button class="mf-btn" onclick={designCover}>
 						<Icon name="image" size={16} />{$t('design_cover')}
 					</button>
 					<div style="flex:1"></div>
@@ -258,5 +333,6 @@
 				</div>
 			{/if}
 		</section>
+		</div>
 	</div>
 </div>

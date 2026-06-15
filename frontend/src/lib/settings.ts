@@ -5,6 +5,7 @@ import type { ManuscriptSettings } from './types';
 export const DEFAULT_SETTINGS: ManuscriptSettings = {
 	imageLimit: 0,
 	chapterStart: 'auto',
+	pageSize: 'a4',
 	paper: '/assets/manuscript/papers/paper-02-burnt-edge-parchment-subtle2.jpg',
 	ornament: '/assets/manuscript/marginOrnaments/marginOrnaments-09-ivy-vine-with-red-berries.png',
 	divider: '/assets/manuscript/dividers/dividers-04-red-and-gold-gothic-divider.png',

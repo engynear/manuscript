@@ -1,7 +1,16 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import type { ManuscriptSettings } from '$lib/types';
-	import { fontFamilyFor, dropcapBackground, inkThemeForPaper } from '$lib/manuscript';
+	import type { BookImage, ManuscriptPlan, ManuscriptSettings } from '$lib/types';
+	import {
+		fontFamilyFor,
+		dropcapBackground,
+		inkThemeForPaper,
+		buildBlocks,
+		dropFirst,
+		paginate
+	} from '$lib/manuscript';
+	import type { ManuscriptBlock, PageSeg } from '$lib/manuscript';
+	import { mediaUrl } from '$lib/api';
 	import Icon from '$lib/components/Icon.svelte';
 
 	interface Props {
@@ -9,10 +18,10 @@
 		settings: ManuscriptSettings;
 		/** 'spread' = facing two-page book, 'single' = one page at a time. */
 		mode?: 'spread' | 'single';
+		plan?: ManuscriptPlan | null;
+		images?: BookImage[];
 	}
-	let { md, settings: s, mode = 'spread' }: Props = $props();
-
-	type Block = { t: 'h1' | 'h2' | 'p'; text: string };
+	let { md, settings: s, mode = 'spread', plan = null, images = [] }: Props = $props();
 
 	const single = $derived(mode === 'single');
 	const per = $derived(single ? 1 : 2); // pages advanced per turn
@@ -38,58 +47,46 @@
 	const fs = $derived(Math.max(14, Math.round(pageW * 0.044)));
 	const contentH = $derived(pageH - padTop - padBot);
 
-	function parse(src: string): Block[] {
-		const blocks: Block[] = [];
-		let para: string[] = [];
-		const flush = () => {
-			if (para.length) {
-				blocks.push({ t: 'p', text: para.join(' ') });
-				para = [];
-			}
-		};
-		for (const l of (src || '').split('\n')) {
-			if (l.startsWith('## ')) {
-				flush();
-				blocks.push({ t: 'h2', text: l.slice(3) });
-			} else if (l.startsWith('# ')) {
-				flush();
-				blocks.push({ t: 'h1', text: l.slice(2) });
-			} else if (l.trim() === '') {
-				flush();
-			} else {
-				para.push(l);
-			}
-		}
-		flush();
-		return blocks;
-	}
-
-	const blocks = $derived(parse(md));
-	const firstParaIdx = $derived(blocks.findIndex((b) => b.t === 'p'));
+	const blocks = $derived(buildBlocks(md, plan, images));
 
 	// ---- pagination: measure each block, greedily pack into A4-height pages ----
+	// Long paragraphs are split across pages so no text is ever clipped.
 	let measureEl: HTMLDivElement | undefined = $state();
-	let pages = $state<number[][]>([]); // arrays of block indices
+	let splitEl: HTMLDivElement | undefined = $state(); // measures candidate paragraph slices
+	let pages = $state<PageSeg[][]>([]); // arrays of placements
 
-	function paginate() {
-		if (!measureEl) return;
+	/** Markup for a paragraph slice, matching the rendered <p> so heights agree. */
+	function pHtml(html: string, drop: boolean): string {
+		if (drop) {
+			const { rest } = dropFirst(html);
+			return `<p style="margin:0 0 .85em;text-align:justify;hyphens:auto"><span style="float:left;width:60px;height:60px;margin:.05em .35em 0 0;font-size:40px;line-height:1"></span>${rest}</p>`;
+		}
+		return `<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">${html}</p>`;
+	}
+
+	function runPaginate() {
+		if (!measureEl || !splitEl) return;
 		const kids = Array.from(measureEl.children) as HTMLElement[];
-		const result: number[][] = [];
-		let cur: number[] = [];
-		let h = 0;
-		kids.forEach((el, i) => {
-			const cs = getComputedStyle(el);
-			const bh = el.offsetHeight + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
-			if (h + bh > contentH && cur.length) {
-				result.push(cur);
-				cur = [];
-				h = 0;
+		// The reader is Model B: its own responsive geometry, and it always breaks
+		// at every h1/h2 (chapter-per-page) regardless of the print page-break
+		// setting. It shares only the algorithm with the preview/PDF (Model A).
+		const next = paginate(
+			blocks,
+			contentH,
+			fs,
+			{ breakMode: 'newPage', dropcap: !!s.dropcap },
+			{
+				blockHeight: (i) => {
+					const el = kids[i];
+					const cs = getComputedStyle(el);
+					return el.offsetHeight + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
+				},
+				measureP: (html, drop) => {
+					splitEl!.innerHTML = pHtml(html, drop);
+					return (splitEl!.firstElementChild as HTMLElement).offsetHeight;
+				}
 			}
-			cur.push(i);
-			h += bh;
-		});
-		if (cur.length) result.push(cur);
-		const next = result.length ? result : [[]];
+		);
 		pages = next;
 		if (spread > next.length - 1) {
 			const last = Math.max(0, next.length - 1);
@@ -98,14 +95,14 @@
 	}
 
 	$effect(() => {
-		void [md, s, pageW, contentH];
+		void [md, s, pageW, contentH, plan, images];
 		let cancelled = false;
 		// rAF flushes layout before measuring; the timeout is a fallback for
 		// hidden/throttled tabs where rAF may not fire.
 		const run = () => {
 			if (cancelled) return;
-			requestAnimationFrame(paginate);
-			setTimeout(paginate, 60);
+			requestAnimationFrame(runPaginate);
+			setTimeout(runPaginate, 60);
 		};
 		if (typeof document !== 'undefined' && document.fonts?.ready) {
 			document.fonts.ready.then(run);
@@ -223,10 +220,10 @@
 	});
 </script>
 
-{#snippet blockView(b: Block, isFirstPara: boolean)}
+{#snippet blockView(b: ManuscriptBlock)}
 	{#if b.t === 'h1'}
 		<h1 style="text-align:center;margin:0 0 .2em;font-size:2em;font-weight:700;color:{ink.red}">
-			{b.text}
+			{@html b.html}
 		</h1>
 		{#if s.titleDivider}
 			<img src={s.titleDivider} alt="" style="display:block;margin:.2em auto 1em;height:28px;width:60%;object-fit:contain" />
@@ -236,9 +233,20 @@
 			<img src={s.divider} alt="" style="display:block;margin:1em auto .8em;height:32px;width:55%;object-fit:contain" />
 		{/if}
 		<h2 style="text-align:center;margin:0 0 .6em;font-size:1.35em;font-weight:600;color:{ink.red};letter-spacing:.01em">
-			{b.text}
+			{@html b.html}
 		</h2>
-	{:else if isFirstPara && s.dropcap}
+	{:else if b.t === 'ornament'}
+		{#if s.divider}
+			<img src={s.divider} alt="" style="display:block;margin:1em auto;height:26px;width:48%;object-fit:contain;opacity:.9" />
+		{/if}
+	{:else if b.t === 'illustration'}
+		<figure style="margin:1em 0;text-align:center">
+			<img src={mediaUrl(b.url)} alt={b.caption} style="display:block;margin:0 auto;max-width:78%;max-height:{Math.round(contentH * 0.5)}px;object-fit:contain" />
+			{#if b.caption}
+				<figcaption style="margin-top:.4em;font-style:italic;font-size:.85em;color:{ink.fadedInk}">{b.caption}</figcaption>
+			{/if}
+		</figure>
+	{:else if b.dropCap && s.dropcap}
 		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">
 			<span
 				style="position:relative;float:left;display:grid;place-items:center;overflow:hidden;width:60px;height:60px;margin:.05em .35em 0 0;background-color:{dropcapBackground(
@@ -246,11 +254,31 @@
 				)};color:#fff4d6;font-weight:700;font-size:40px;line-height:1"
 			>
 				<img src={s.dropcap} alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
-				<span style="position:relative;z-index:1">{b.text.charAt(0)}</span>
-			</span>{b.text.slice(1)}
+				<span style="position:relative;z-index:1">{@html dropFirst(b.html).first}</span>
+			</span>{@html dropFirst(b.html).rest}
+		</p>
+	{:else if b.t === 'p'}
+		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">{@html b.html}</p>
+	{/if}
+{/snippet}
+
+<!-- a placement on a page: a whole block, or an overriding (possibly split) paragraph slice -->
+{#snippet segView(seg: PageSeg)}
+	{#if seg.html === undefined}
+		{@render blockView(blocks[seg.i])}
+	{:else if seg.drop && s.dropcap}
+		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">
+			<span
+				style="position:relative;float:left;display:grid;place-items:center;overflow:hidden;width:60px;height:60px;margin:.05em .35em 0 0;background-color:{dropcapBackground(
+					s.dropcap
+				)};color:#fff4d6;font-weight:700;font-size:40px;line-height:1"
+			>
+				<img src={s.dropcap} alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
+				<span style="position:relative;z-index:1">{@html dropFirst(seg.html).first}</span>
+			</span>{@html dropFirst(seg.html).rest}
 		</p>
 	{:else}
-		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">{b.text}</p>
+		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">{@html seg.html}</p>
 	{/if}
 {/snippet}
 
@@ -291,8 +319,8 @@
 					? padX + ornW
 					: padX}px {padBot}px {side === 'right' ? padX : padX + ornW}px"
 			>
-				{#each pages[idx] as bi}
-					{@render blockView(blocks[bi], bi === firstParaIdx)}
+				{#each pages[idx] as seg}
+					{@render segView(seg)}
 				{/each}
 			</div>
 		{/if}
@@ -308,10 +336,19 @@
 			padX * 2 -
 			ornW}px;font-family:{family};font-size:{fs}px;line-height:1.7;color:{ink.ink}"
 	>
-		{#each blocks as b, i}
-			<div>{@render blockView(b, i === firstParaIdx)}</div>
+		{#each blocks as b}
+			<div style="display:flow-root">{@render blockView(b)}</div>
 		{/each}
 	</div>
+
+	<!-- single-paragraph measurer for splitting long paragraphs across pages -->
+	<div
+		bind:this={splitEl}
+		aria-hidden="true"
+		style="position:absolute;left:-99999px;top:0;visibility:hidden;display:flow-root;width:{pageW -
+			padX * 2 -
+			ornW}px;font-family:{family};font-size:{fs}px;line-height:1.7;color:{ink.ink}"
+	></div>
 
 	<div
 		class="bs-book"

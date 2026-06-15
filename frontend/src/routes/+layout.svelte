@@ -5,12 +5,13 @@
 	import { page } from '$app/stores';
 	import { auth } from '$lib/api';
 	import TopBar from '$lib/components/TopBar.svelte';
-
 	let { children } = $props();
 
 	// Immersive routes (Reader, public Shared) render without the app shell.
 	const immersive = $derived(
-		$page.url.pathname.startsWith('/reader') || $page.url.pathname.startsWith('/s/')
+		$page.url.pathname.startsWith('/reader') ||
+			$page.url.pathname.startsWith('/s/') ||
+			$page.url.pathname.startsWith('/print')
 	);
 
 	onMount(() => {

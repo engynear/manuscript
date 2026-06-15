@@ -42,12 +42,22 @@ export type FontStyle =
 export interface ManuscriptSettings {
 	imageLimit: number;
 	chapterStart: 'auto' | 'newPage' | 'inline';
+	/** Physical page size for the preview + exported PDF (digital reader is unaffected). */
+	pageSize: 'a4' | 'letter';
 	paper: string;
 	ornament: string;
 	divider: string;
 	titleDivider: string;
 	dropcap: string;
 	fontStyle: FontStyle;
+}
+
+/** A generated illustration tied to a manuscript section. */
+export interface BookImage {
+	sectionId: string;
+	url: string;
+	caption: string;
+	failed: boolean;
 }
 
 export interface Book {
@@ -61,6 +71,9 @@ export interface Book {
 	settings: ManuscriptSettings;
 	cover: Cover;
 	sourceMarkdown?: string;
+	plan?: ManuscriptPlan | null;
+	contentHash?: string;
+	images?: BookImage[];
 	pageCount: number;
 	createdAt: string;
 	updatedAt: string;
@@ -122,4 +135,15 @@ export interface ProgressEvent {
 	message?: string;
 	progress?: number;
 	result?: unknown;
+}
+
+/** `done` result payload from POST /api/plan. */
+export interface PlanResult {
+	hash: string;
+	plan: ManuscriptPlan;
+}
+
+/** `done` result payload from POST /api/images. */
+export interface ImagesResult {
+	images: BookImage[];
 }
