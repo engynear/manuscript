@@ -109,16 +109,22 @@
 				<div class="card-in" style="animation-delay:{Math.min(i, 12) * 45}ms">
 					<div class="book-card">
 						<div class="lift">
-							<BookCover {book} w={180} onclick={() => goto(`/library/${book.id}`)} />
+							<BookCover {book} w={180} onclick={() => goto(`/reader/${book.id}`)} />
 						</div>
 						<div class="quick">
 							<button class="qa" title={$t('read')} onclick={() => goto(`/reader/${book.id}`)}><Icon name="read" size={16} /></button>
 							<button class="qa" title={$t('edit_book')} onclick={() => goto(`/library/${book.id}`)}><Icon name="edit" size={16} /></button>
+							<button class="qa" title={$t('edit_cover')} onclick={() => goto(`/cover/${book.id}`)}><Icon name="image" size={16} /></button>
+							{#if book.contentHash}
+								<a class="qa" title={$t('download')} href={`/media/generated/${book.contentHash}/manuscript.pdf`} download>
+									<Icon name="download" size={16} />
+								</a>
+							{/if}
 							<button class="qa" title={$t('add_shelf')} onclick={() => (addToShelfBook = book.id)}><Icon name="shelves" size={16} /></button>
 							<button class="qa danger" title={$t('del')} onclick={() => remove(book.id)}><Icon name="trash" size={16} /></button>
 						</div>
 					</div>
-					<button class="meta" onclick={() => goto(`/library/${book.id}`)}>
+					<button class="meta" onclick={() => goto(`/reader/${book.id}`)}>
 						<div class="bt">{book.title}</div>
 						<div class="ba">{$t('by')} {book.author}</div>
 					</button>
@@ -205,6 +211,7 @@
 		transition:
 			background 0.15s ease,
 			color 0.15s ease;
+		text-decoration: none;
 	}
 	.qa:hover {
 		background: #fff;

@@ -58,19 +58,26 @@
 					{:else}
 						<div style="display:flex;align-items:flex-end;gap:5px;min-height:232px;padding-bottom:2px">
 							{#each data.books as book (book.id)}
-								<BookSpine {book} h={232} onclick={() => (reading = book)} />
+								<div class="shared-book">
+									<BookSpine {book} h={232} onclick={() => (reading = book)} />
+									{#if data.allowDownloads && book.contentHash}
+										<a
+											class="shared-download"
+											href={`/media/generated/${book.contentHash}/manuscript.pdf`}
+											download
+											title={$t('download')}
+											onclick={(e) => e.stopPropagation()}
+										>
+											<Icon name="download" size={15} />
+										</a>
+									{/if}
+								</div>
 							{/each}
 						</div>
 					{/if}
 				</div>
 				<div class="wood-surface" style="height:var(--shelf-wood-h);border-radius:0 0 4px 4px"></div>
 			</div>
-
-			{#if data.allowDownloads}
-				<div style="text-align:center;margin-top:30px">
-					<button class="mf-btn"><Icon name="download" size={16} />{$t('shared_dl')}</button>
-				</div>
-			{/if}
 		{/if}
 	</div>
 </div>
@@ -89,7 +96,13 @@
 				<div style="font-family:var(--font-display);font-size:16px">{reading.title}</div>
 				<div style="font-size:12px;opacity:.7">{reading.author}</div>
 			</div>
-			<div style="flex:1"></div>
+			<div style="flex:1;display:flex;justify-content:flex-end">
+				{#if data?.allowDownloads && reading.contentHash}
+					<a class="reader-btn" href={`/media/generated/${reading.contentHash}/manuscript.pdf`} download>
+						<Icon name="download" size={17} />{$t('download')}
+					</a>
+				{/if}
+			</div>
 		</div>
 		<div
 			onmousedown={(e) => e.stopPropagation()}
@@ -102,3 +115,36 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	.shared-book {
+		position: relative;
+		flex: 0 0 auto;
+	}
+	.shared-download {
+		position: absolute;
+		left: 50%;
+		bottom: 18px;
+		transform: translate(-50%, 8px);
+		display: grid;
+		place-items: center;
+		width: 32px;
+		height: 32px;
+		border-radius: 8px;
+		border: 1px solid rgba(255, 255, 255, 0.18);
+		background: rgba(250, 245, 234, 0.94);
+		color: var(--oxblood);
+		box-shadow: var(--shadow-md);
+		opacity: 0;
+		pointer-events: none;
+		transition:
+			opacity 0.16s ease,
+			transform 0.16s ease;
+	}
+	.shared-book:hover .shared-download,
+	.shared-book:focus-within .shared-download {
+		opacity: 1;
+		transform: translate(-50%, 0);
+		pointer-events: auto;
+	}
+</style>

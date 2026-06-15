@@ -17,7 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/chromedp"
 )
 
 type generationRequest struct {
@@ -85,6 +86,7 @@ type generatedImage struct {
 }
 
 var nonSlugChars = regexp.MustCompile(`[^a-z0-9]+`)
+const generationCacheVersion = "v2"
 
 func (s *Server) handleGenerateManuscript(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.requireUser(w, r); !ok {
@@ -110,6 +112,7 @@ func (s *Server) handleGenerateManuscript(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/x-ndjson; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache, no-transform")
+	w.Header().Set("X-Accel-Buffering", "no")
 	flusher, _ := w.(http.Flusher)
 	send := func(payload generationProgress) {
 		_ = json.NewEncoder(w).Encode(payload)
@@ -134,6 +137,8 @@ func (s *Server) handleGenerateManuscript(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		send(generationProgress{Type: "progress", Step: "plan-fallback", Message: "Using local plan fallback", Progress: 24})
 		plan = localPlan(req.Markdown, req.Settings.ImageLimit)
+	} else {
+		send(generationProgress{Type: "progress", Step: "plan-ready", Message: "Manuscript plan ready", Progress: 26})
 	}
 	plan = ensureIllustrations(plan, req.Settings.ImageLimit)
 
@@ -187,12 +192,13 @@ func (s *Server) handleGenerateManuscript(w http.ResponseWriter, r *http.Request
 		images[section.ID] = img
 	}
 
-	send(generationProgress{Type: "progress", Step: "html", Message: "Composing preview", Progress: 72})
-	previewHTML := renderPreviewHTML(plan, images, req.Settings)
+	send(generationProgress{Type: "progress", Step: "html", Message: "Composing styled preview", Progress: 72})
+	publicBaseURL := requestBaseURL(r)
+	previewHTML := renderPreviewHTML(plan, images, req.Settings, publicBaseURL)
 
-	send(generationProgress{Type: "progress", Step: "pdf", Message: "Binding PDF", Progress: 88})
+	send(generationProgress{Type: "progress", Step: "pdf", Message: "Printing PDF from preview layout", Progress: 88})
 	pdfPath := filepath.Join(jobDir, "manuscript.pdf")
-	if err := renderPDF(pdfPath, plan, images); err != nil {
+	if err := renderPDF(ctx, pdfPath, previewHTML); err != nil {
 		send(generationProgress{Type: "error", Message: "could not create PDF"})
 		return
 	}
@@ -215,9 +221,10 @@ func (s *Server) handleGenerateManuscript(w http.ResponseWriter, r *http.Request
 
 func contentHash(markdown string, settings generationSettings) string {
 	payload, _ := json.Marshal(struct {
+		Version  string             `json:"version"`
 		Markdown string             `json:"markdown"`
 		Settings generationSettings `json:"settings"`
-	}{Markdown: markdown, Settings: settings})
+	}{Version: generationCacheVersion, Markdown: markdown, Settings: settings})
 	sum := sha256.Sum256(payload)
 	return hex.EncodeToString(sum[:])[:24]
 }
@@ -582,7 +589,7 @@ func imageSize(kind string) string {
 }
 
 func illustrationStyle(kind string) string {
-	base := "Transparent-background medieval manuscript cutout asset. Single isolated illustration only. PNG alpha cutout. No parchment, paper, page, backdrop, frame, readable text, modern objects, or beige texture. Hand-drawn ink, faded watercolor, lapis blue, vermilion red, verdigris green, violet shadows, and worn gold ornament when relevant."
+	base := "Transparent-background medieval manuscript cutout asset. Single isolated illustration only. PNG alpha cutout with empty transparent padding around the complete artwork. The full subject must be visible, centered, and not cropped by the image edges. No parchment, paper, page, backdrop, frame, readable text, caption, modern objects, beige texture, cream texture, flat square tile, or decorative background. Only the ink and watercolor artwork should have visible pixels. Hand-drawn ink, faded watercolor, lapis blue, vermilion red, verdigris green, violet shadows, and worn gold ornament when relevant."
 	switch kind {
 	case "map":
 		return base + " Isolated fantasy cartography drawing only, with coastlines, rivers, mountains, ruins, old roads, compass marks, blue rivers, and red route marks."
@@ -613,13 +620,66 @@ func truncateText(value string, max int) string {
 	return strings.TrimSpace(value[:max]) + "..."
 }
 
-func renderPreviewHTML(plan manuscriptPlan, images map[string]generatedImage, settings generationSettings) string {
+func fontCSS(style string) string {
+	body := "/assets/manuscript/fonts/eb-garamond-latin-400.woff2"
+	display := "/assets/manuscript/fonts/cormorant-garamond-latin-700.woff2"
+	switch style {
+	case "monomakh":
+		body = "/assets/manuscript/fonts/monomakh-regular.otf"
+		display = body
+	case "ponomar":
+		body = "/assets/manuscript/fonts/ponomar-regular.otf"
+		display = body
+	case "menaion":
+		body = "/assets/manuscript/fonts/menaion-regular.otf"
+		display = body
+	case "fedorovsk":
+		body = "/assets/manuscript/fonts/fedorovsk-regular.otf"
+		display = body
+	case "ruslan":
+		body = "/assets/manuscript/fonts/ruslan-display-cyrillic-400.woff2"
+		display = body
+	case "uncial":
+		body = "/assets/manuscript/fonts/uncial-antiqua-regular.ttf"
+		display = body
+	case "almendra":
+		body = "/assets/manuscript/fonts/almendra-display-regular.ttf"
+		display = body
+	}
+	return `@font-face{font-family:"Forge Body";src:url("` + body + `")}@font-face{font-family:"Forge Display";src:url("` + display + `");font-weight:700}`
+}
+
+func requestBaseURL(r *http.Request) string {
+	proto := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto"))
+	if proto == "" {
+		if r.TLS != nil {
+			proto = "https"
+		} else {
+			proto = "http"
+		}
+	}
+	host := strings.TrimSpace(r.Header.Get("X-Forwarded-Host"))
+	if host == "" {
+		host = r.Host
+	}
+	if host == "" {
+		return ""
+	}
+	return proto + "://" + host
+}
+
+func renderPreviewHTML(plan manuscriptPlan, images map[string]generatedImage, settings generationSettings, baseURL string) string {
 	paper := html.EscapeString(settings.Paper)
 	ornament := html.EscapeString(settings.Ornament)
 	divider := html.EscapeString(settings.Divider)
 	var b strings.Builder
-	b.WriteString(`<!doctype html><html><head><meta charset="utf-8"><style>`)
-	b.WriteString(`body{margin:0;background:#2b2118;color:#2d1c0f;font-family:Georgia,serif}.wrap{display:grid;gap:24px;padding:24px}.page{position:relative;box-sizing:border-box;width:min(760px,calc(100vw - 48px));min-height:1050px;margin:0 auto;padding:72px 76px 72px 126px;background:#ead8ad;background-image:url("` + paper + `");background-size:cover;box-shadow:0 18px 60px rgba(0,0,0,.42);overflow:hidden}.orn{position:absolute;left:28px;top:72px;bottom:72px;width:56px;object-fit:contain;object-position:top}h1,h2{text-align:center;color:#741b13;line-height:1.15}h1{font-size:42px;margin:0 0 10px}h2{font-size:28px;margin:30px 0 14px}p{font-size:18px;line-height:1.72;text-align:justify}.divider{display:block;width:58%;height:34px;margin:12px auto 20px;object-fit:contain}.figure{margin:24px auto;text-align:center}.figure img{max-width:92%;max-height:420px;object-fit:contain}.caption{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#7b5b2d}.fallback{border:1px solid rgba(116,27,19,.22);padding:18px;color:#7b5b2d;background:rgba(255,246,220,.32)}`)
+	b.WriteString(`<!doctype html><html><head><meta charset="utf-8">`)
+	if baseURL != "" {
+		b.WriteString(`<base href="` + html.EscapeString(strings.TrimRight(baseURL, "/")) + `/">`)
+	}
+	b.WriteString(`<style>`)
+	b.WriteString(fontCSS(settings.FontStyle))
+	b.WriteString(`@page{size:A4;margin:0}html,body{margin:0}body{background:#2b2118;color:#2d1c0f;font-family:"Forge Body",Georgia,serif}.wrap{display:grid;gap:24px;padding:24px}.page{position:relative;box-sizing:border-box;width:min(760px,calc(100vw - 48px));min-height:1050px;margin:0 auto;padding:72px 76px 72px 126px;background:#ead8ad;background-image:url("` + paper + `");background-size:cover;box-shadow:0 18px 60px rgba(0,0,0,.42);overflow:hidden}.orn{position:absolute;left:28px;top:72px;bottom:72px;width:56px;object-fit:contain;object-position:top}h1,h2{text-align:center;color:#741b13;line-height:1.15;break-after:avoid;font-family:"Forge Display","Forge Body",Georgia,serif}h1{font-size:42px;margin:0 0 10px}h2{font-size:28px;margin:34px 0 14px}p{font-size:18px;line-height:1.72;text-align:justify}.divider{display:block;width:58%;height:34px;margin:12px auto 20px;object-fit:contain}.figure{margin:30px auto;text-align:center;break-inside:avoid}.figure img{display:block;width:auto;max-width:min(92%,560px);max-height:none;margin:0 auto;object-fit:contain}.caption{margin-top:10px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#7b5b2d}.fallback{border:1px solid rgba(116,27,19,.22);padding:18px;color:#7b5b2d;background:rgba(255,246,220,.32)}@media print{body{background:#fff}.wrap{display:block;padding:0}.page{width:210mm;min-height:297mm;margin:0;box-shadow:none;border-radius:0;break-after:page}.figure img{max-width:145mm}}`)
 	b.WriteString(`</style></head><body><div class="wrap">`)
 	b.WriteString(`<section class="page">`)
 	if ornament != "" {
@@ -679,53 +739,48 @@ func markdownParagraphs(markdown string) []string {
 	return out
 }
 
-func renderPDF(path string, plan manuscriptPlan, images map[string]generatedImage) error {
+func renderPDF(ctx context.Context, path string, htmlDoc string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	pdf := gofpdf.New("P", "mm", "A4", "")
-	pdf.SetTitle(plan.Title, true)
-	pdf.SetMargins(22, 22, 22)
-	pdf.SetAutoPageBreak(true, 22)
-	pdf.AddPage()
-	pdf.SetFont("Times", "B", 24)
-	pdf.SetTextColor(116, 27, 19)
-	pdf.MultiCell(0, 12, plan.Title, "", "C", false)
-	if plan.Subtitle != "" {
-		pdf.SetFont("Times", "I", 14)
-		pdf.SetTextColor(74, 52, 30)
-		pdf.MultiCell(0, 8, plan.Subtitle, "", "C", false)
+
+	allocOpts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+		chromedp.Flag("disable-gpu", true),
+		chromedp.Flag("no-sandbox", true),
+		chromedp.Flag("disable-dev-shm-usage", true),
+	)
+	if chromeBin := strings.TrimSpace(os.Getenv("CHROME_BIN")); chromeBin != "" {
+		allocOpts = append(allocOpts, chromedp.ExecPath(chromeBin))
 	}
-	pdf.Ln(6)
-	for i, section := range plan.Sections {
-		if i > 0 {
-			pdf.SetFont("Times", "B", 18)
-			pdf.SetTextColor(116, 27, 19)
-			pdf.Ln(5)
-			pdf.MultiCell(0, 9, section.DisplayHeading, "", "C", false)
-			pdf.Ln(2)
-		}
-		pdf.SetFont("Times", "", 12)
-		pdf.SetTextColor(45, 28, 15)
-		for _, p := range markdownParagraphs(section.BodyMarkdown) {
-			pdf.MultiCell(0, 6.5, p, "", "J", false)
-			pdf.Ln(1.5)
-		}
-		if section.Illustration != nil {
-			img := images[section.ID]
-			if !img.Failed && img.FilePath != "" {
-				if pdf.GetY() > 195 {
-					pdf.AddPage()
-				}
-				opts := gofpdf.ImageOptions{ImageType: "PNG", ReadDpi: true}
-				pdf.ImageOptions(img.FilePath, 45, pdf.GetY()+4, 120, 0, false, opts, 0, "")
-				pdf.Ln(92)
+	allocCtx, cancelAlloc := chromedp.NewExecAllocator(ctx, allocOpts...)
+	defer cancelAlloc()
+
+	printCtx, cancelPrint := chromedp.NewContext(allocCtx)
+	defer cancelPrint()
+
+	printCtx, cancelTimeout := context.WithTimeout(printCtx, 90*time.Second)
+	defer cancelTimeout()
+
+	var pdfBytes []byte
+	dataURL := "data:text/html;base64," + base64.StdEncoding.EncodeToString([]byte(htmlDoc))
+	if err := chromedp.Run(printCtx,
+		chromedp.Navigate(dataURL),
+		chromedp.WaitReady("body", chromedp.ByQuery),
+		chromedp.Sleep(1200*time.Millisecond),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			buf, _, err := page.PrintToPDF().
+				WithPrintBackground(true).
+				WithPreferCSSPageSize(true).
+				Do(ctx)
+			if err != nil {
+				return err
 			}
-			pdf.SetFont("Times", "I", 10)
-			pdf.SetTextColor(95, 71, 38)
-			pdf.MultiCell(0, 5, section.Illustration.Caption, "", "C", false)
-			pdf.Ln(3)
-		}
+			pdfBytes = buf
+			return nil
+		}),
+	); err != nil {
+		return err
 	}
-	return pdf.OutputFileAndClose(path)
+	return os.WriteFile(path, pdfBytes, 0o644)
 }

@@ -78,14 +78,14 @@
 		return line ? line.slice(2).trim() : 'Untitled';
 	}
 
-	async function saveToLibrary() {
+	async function saveToLibrary(): Promise<string | null> {
 		if (!$currentUser) {
 			goto('/signin');
-			return;
+			return null;
 		}
 		saving = true;
 		try {
-			await booksApi.create({
+			const book = await booksApi.create({
 				title: result?.title || titleFromMd(md),
 				author: $currentUser.displayName || '',
 				sourceMarkdown: md,
@@ -94,6 +94,28 @@
 				pageCount: md.split(/\n#{1,2}\s/).length
 			});
 			goto('/library');
+			return book.id;
+		} finally {
+			saving = false;
+		}
+	}
+
+	async function designCover() {
+		if (!$currentUser) {
+			goto('/signin');
+			return;
+		}
+		saving = true;
+		try {
+			const book = await booksApi.create({
+				title: result?.title || titleFromMd(md),
+				author: $currentUser.displayName || '',
+				sourceMarkdown: md,
+				contentHash: result?.hash ?? '',
+				settings: $settings,
+				pageCount: md.split(/\n#{1,2}\s/).length
+			});
+			goto(`/cover/${book.id}`);
 		} finally {
 			saving = false;
 		}
@@ -169,9 +191,29 @@
 					<Icon name="settings" size={16} />{$t('settings')}
 				</button>
 				<button class="mf-btn mf-btn--primary" onclick={generate} disabled={phase === 'forging'}>
-					<Icon name="forge" size={17} />{phase === 'forging' ? $t('generating') : $t('generate')}
+					<Icon name="forge" size={17} />{phase === 'forging' ? `${Math.round(pct)}%` : $t('generate')}
 				</button>
 			</div>
+			{#if phase === 'forging'}
+				<div
+					class="mf-fade"
+					style="margin:0 18px 18px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.38)"
+				>
+					<div style="display:flex;align-items:center;gap:10px">
+						<div
+							style="height:7px;flex:1;border-radius:100px;overflow:hidden;background:var(--paper-deep);border:1px solid var(--line)"
+						>
+							<div
+								style="height:100%;width:{pct}%;background:linear-gradient(90deg,var(--gilt),var(--oxblood));transition:width .25s ease"
+							></div>
+						</div>
+						<span style="font-family:var(--font-mono);font-size:12px;color:var(--ink-soft)">{Math.round(pct)}%</span>
+					</div>
+					<div style="margin-top:9px;font-size:13.5px;color:var(--ink-soft)">
+						{progressMessage || $t('generating')}
+					</div>
+				</div>
+			{/if}
 		</section>
 
 		<!-- right: forged preview -->
@@ -296,7 +338,7 @@
 					<a class="mf-btn mf-btn--primary" href={result?.pdfUrl ?? '#'} download>
 						<Icon name="download" size={16} />{$t('download')}
 					</a>
-					<button class="mf-btn" onclick={() => goto('/cover/new')}>
+					<button class="mf-btn" onclick={designCover} disabled={saving}>
 						<Icon name="image" size={16} />{$t('design_cover')}
 					</button>
 					<div style="flex:1"></div>
