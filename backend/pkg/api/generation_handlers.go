@@ -29,6 +29,7 @@ type generationRequest struct {
 type generationSettings struct {
 	ImageLimit   int    `json:"imageLimit"`
 	ChapterStart string `json:"chapterStart"`
+	PageSize     string `json:"pageSize"`
 	Paper        string `json:"paper"`
 	Ornament     string `json:"ornament"`
 	Divider      string `json:"divider"`
