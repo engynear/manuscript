@@ -112,7 +112,6 @@
 							<BookCover {book} w={180} onclick={() => goto(`/reader/${book.id}`)} />
 						</div>
 						<div class="quick">
-							<button class="qa" title={$t('read')} onclick={() => goto(`/reader/${book.id}`)}><Icon name="read" size={16} /></button>
 							<button class="qa" title={$t('edit_book')} onclick={() => goto(`/library/${book.id}`)}><Icon name="edit" size={16} /></button>
 							<button class="qa" title={$t('edit_cover')} onclick={() => goto(`/cover/${book.id}`)}><Icon name="image" size={16} /></button>
 							{#if book.contentHash}

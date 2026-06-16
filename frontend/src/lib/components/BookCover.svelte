@@ -2,6 +2,7 @@
 	import type { Book } from '$lib/types';
 	import { paletteFor } from '$lib/covers';
 	import { shade } from '$lib/shade';
+	import { mediaUrl } from '$lib/api';
 
 	interface Props {
 		book: Book;
@@ -12,6 +13,8 @@
 	let { book, w = 150, title = true, onclick }: Props = $props();
 
 	const pal = $derived(paletteFor(book));
+	const coverColor = $derived(pal.cover ?? pal.spine);
+	const artSrc = $derived(mediaUrl(book.cover?.artUrl));
 	const titleColor = $derived(book.cover?.titleColor || pal.fg);
 	const hideTitle = $derived(Boolean(book.cover?.hideTitle));
 	const h = $derived(Math.round(w * 1.5));
@@ -44,16 +47,16 @@
 	style="width:{w}px;height:{h}px;position:relative;flex:0 0 auto;overflow:hidden;
 		border-radius:3px {5 * sc}px {5 * sc}px 3px;color:{pal.fg};cursor:{onclick ? 'pointer' : 'default'};
 		background:linear-gradient(110deg,{pal.spine} 0%,{shade(pal.spine, 1.16)} 7%,{shade(
-		pal.spine,
+		coverColor,
 		1.05
-	)} 12%,{pal.spine} 88%);
+	)} 12%,{coverColor} 88%);
 		box-shadow:var(--shadow-md),inset 5px 0 8px rgba(0,0,0,.34),inset -2px 0 4px rgba(255,255,255,.07)"
 >
 	<div style="position:absolute;left:{6 * sc}px;top:0;bottom:0;width:1.5px;background:rgba(0,0,0,.28)"></div>
 	<div style="position:absolute;left:{9 * sc}px;top:0;bottom:0;width:1px;background:rgba(255,255,255,.08)"></div>
 
-	{#if book.cover?.artUrl}
-		<img src={book.cover.artUrl} alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
+	{#if artSrc}
+		<img src={artSrc} alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
 	{:else}
 		<!-- procedural illumination panel -->
 		<div

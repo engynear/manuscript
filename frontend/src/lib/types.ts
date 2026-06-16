@@ -13,6 +13,7 @@ export interface AuthResponse {
 /** A spine/cover palette (cloth + leather book colours). */
 export interface Palette {
 	spine: string;
+	cover?: string;
 	fg: string;
 	foil: string;
 }

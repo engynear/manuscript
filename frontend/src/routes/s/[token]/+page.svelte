@@ -9,6 +9,7 @@
 	import LangSwitch from '$lib/components/LangSwitch.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import BookSpine from '$lib/components/BookSpine.svelte';
+	import BookCover from '$lib/components/BookCover.svelte';
 	import ManuscriptPages from '$lib/components/ManuscriptPages.svelte';
 	import BookSpread from '$lib/components/BookSpread.svelte';
 
@@ -169,6 +170,9 @@
 				style="position:relative;z-index:1;flex:1;min-height:0;overflow:auto;display:grid;place-items:start center;padding:0 16px 48px"
 			>
 				<div class="mf-fade-up" style="padding:20px 0">
+					<div class="scroll-cover">
+						<BookCover book={reading} w={360} />
+					</div>
 					<ManuscriptPages md={readingMd} plan={readingPlan} images={readingImages} settings={readingSettings} width={540} />
 				</div>
 			</div>
@@ -178,7 +182,7 @@
 			>
 				<div class="mf-fade-up" style="width:100%;height:100%">
 					{#key mode}
-						<BookSpread md={readingMd} plan={readingPlan} images={readingImages} settings={readingBase} {mode} />
+						<BookSpread md={readingMd} plan={readingPlan} images={readingImages} settings={readingBase} {mode} book={reading} />
 					{/key}
 				</div>
 			</div>
@@ -218,6 +222,13 @@
 		pointer-events: auto;
 	}
 	.rd-menu { position: relative; }
+	.scroll-cover {
+		display: grid;
+		place-items: center;
+		margin: 0 auto 32px;
+		width: min(100%, 540px);
+		padding: 34px 0;
+	}
 	.rd-scrim {
 		position: fixed; inset: 0; z-index: 9;
 		border: none; background: transparent; cursor: default;

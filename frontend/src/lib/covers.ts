@@ -22,7 +22,10 @@ function hashString(s: string): number {
 
 /** Returns the book's stored palette, or a deterministic one derived from its id. */
 export function paletteFor(book: Pick<Book, 'id' | 'cover'>): Palette {
-	if (book.cover?.palette?.spine) return book.cover.palette;
+	if (book.cover?.palette?.spine) {
+		const stored = book.cover.palette;
+		return { ...stored, cover: stored.cover ?? stored.spine };
+	}
 	return PALETTES[hashString(book.id || '') % PALETTES.length];
 }
 

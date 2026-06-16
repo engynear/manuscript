@@ -16,7 +16,6 @@
 	// editable fields
 	let title = $state('');
 	let author = $state('');
-	let subtitle = $state('');
 
 	// live preview book derived from the draft
 	const preview = $derived<Book>({
@@ -30,7 +29,6 @@
 		book = b;
 		title = b.title;
 		author = b.author;
-		subtitle = b.subtitle ?? '';
 	}
 
 	async function save() {
@@ -42,7 +40,7 @@
 				title: title.trim() || 'Untitled',
 				titleRu: book.titleRu ?? '',
 				author: author.trim(),
-				subtitle: subtitle.trim(),
+				subtitle: book.subtitle ?? '',
 				year: book.year ?? null,
 				settings: book.settings,
 				cover: book.cover ?? {},
@@ -117,10 +115,6 @@
 				<label class="f">
 					<span class="lbl">{$t('f_author')}</span>
 					<input bind:value={author} placeholder={$t('anon')} />
-				</label>
-				<label class="f">
-					<span class="lbl">{$t('f_subtitle')}</span>
-					<input bind:value={subtitle} placeholder="—" />
 				</label>
 				{#if error}<p class="err">{error}</p>{/if}
 

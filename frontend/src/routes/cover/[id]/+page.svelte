@@ -20,6 +20,10 @@
 	let subtitle = $state('');
 	let spineTitle = $state('');
 	let pal = $state<Palette>(PALETTES[0]);
+	let hideTitle = $state(false);
+	let rotateX = $state(4);
+	let rotateY = $state(-26);
+	let dragStart = $state<{ x: number; y: number; rx: number; ry: number } | null>(null);
 
 	type Tab = 'templates' | 'generate' | 'upload';
 	let tab = $state<Tab>('templates');
@@ -29,6 +33,8 @@
 	let uploadErr = $state('');
 
 	const artSrc = $derived(artUrl ? mediaUrl(artUrl) : '');
+	const coverColor = $derived(pal.cover ?? pal.spine);
+	const bookDepth = $derived(Math.round(Math.max(28, Math.min(74, 30 + Math.sqrt(book?.pageCount ?? 180) * 2.4))));
 
 	// Spine colours from the design (a curated subset of the palette spines).
 	const spineColors = [
@@ -43,7 +49,9 @@
 		subtitle = b.subtitle ?? '';
 		spineTitle = b.cover?.spineText ?? b.title;
 		pal = b.cover?.palette ?? paletteFor(b);
+		pal = { ...pal, cover: pal.cover ?? pal.spine };
 		artUrl = b.cover?.artUrl ?? '';
+		hideTitle = Boolean(b.cover?.hideTitle);
 	}
 
 	async function onFile(e: Event) {
@@ -80,7 +88,13 @@
 				subtitle: subtitle.trim(),
 				year: book.year ?? null,
 				settings: book.settings,
-				cover: { palette: pal, spineText: spineTitle.trim(), artUrl: artUrl || null },
+				cover: {
+					...(book.cover ?? {}),
+					palette: { ...pal, cover: coverColor },
+					spineText: spineTitle.trim(),
+					artUrl: artUrl || null,
+					hideTitle
+				},
 				sourceMarkdown: book.sourceMarkdown ?? '',
 				pageCount: book.pageCount
 			});
@@ -92,6 +106,22 @@
 		} finally {
 			saving = false;
 		}
+	}
+
+	function startRotate(e: PointerEvent) {
+		const target = e.currentTarget as HTMLElement;
+		target.setPointerCapture(e.pointerId);
+		dragStart = { x: e.clientX, y: e.clientY, rx: rotateX, ry: rotateY };
+	}
+
+	function rotateBook(e: PointerEvent) {
+		if (!dragStart) return;
+		rotateY = Math.max(-64, Math.min(34, dragStart.ry + (e.clientX - dragStart.x) * 0.22));
+		rotateX = Math.max(-16, Math.min(18, dragStart.rx - (e.clientY - dragStart.y) * 0.12));
+	}
+
+	function stopRotate() {
+		dragStart = null;
 	}
 
 	onMount(async () => {
@@ -124,7 +154,7 @@
 {/snippet}
 
 <div class="wrap">
-	<button class="mf-btn mf-btn--ghost back" onclick={() => book && goto(`/library/${book.id}`)}>
+	<button class="mf-btn mf-btn--ghost back" onclick={() => goto('/library')}>
 		<Icon name="chevL" size={16} />{$t('nav_library')}
 	</button>
 
@@ -164,12 +194,12 @@
 						{#each PALETTES as p}
 							<button
 								class="tpl"
-								class:on={pal.spine === p.spine}
+								class:on={coverColor === p.spine && !artUrl}
 								title={p.spine}
 								aria-label={p.spine}
 								style="background:linear-gradient(120deg,{p.spine},{shade(p.spine, 1.12)})"
 								onclick={() => {
-									pal = { ...p };
+									pal = { ...pal, cover: p.spine, fg: p.fg, foil: p.foil };
 									artUrl = '';
 								}}
 							></button>
@@ -191,6 +221,11 @@
 					</label>
 					{#if uploadErr}<p class="err">{uploadErr}</p>{/if}
 				{/if}
+
+				<label class="check-row">
+					<input type="checkbox" bind:checked={hideTitle} />
+					<span>{$t('cover_hide_title')}</span>
+				</label>
 
 				<!-- spine -->
 				<div class="spine-sec">
@@ -230,8 +265,18 @@
 					<span class="mf-chip">{$t('spine')}</span>
 				</div>
 				<div class="stage">
-					<div class="book3d-perspective">
-						<div class="book3d">
+					<div
+						class="book3d-perspective"
+						onpointerdown={startRotate}
+						onpointermove={rotateBook}
+						onpointerup={stopRotate}
+						onpointercancel={stopRotate}
+						role="presentation"
+					>
+						<div
+							class="book3d"
+							style="--book-depth:{bookDepth}px;--cover-color:{coverColor};--rx:{rotateX}deg;--ry:{rotateY}deg"
+						>
 							<!-- spine face -->
 							<div
 								class="spine-face"
@@ -247,8 +292,8 @@
 							<!-- front cover -->
 							<div
 								class="front"
-								style="background:linear-gradient(108deg,{shade(pal.spine, 1.05)},{pal.spine} 12%,{pal.spine} 88%,{shade(
-									pal.spine,
+								style="background:linear-gradient(108deg,{shade(pal.spine, 1.05)},{coverColor} 12%,{coverColor} 88%,{shade(
+									coverColor,
 									0.92
 								)});color:{pal.fg}"
 							>
@@ -258,12 +303,14 @@
 								{:else}
 									{@render coverArt(pal)}
 								{/if}
-								<div style="position:absolute;left:12%;right:8%;bottom:7%">
-									<div class="ct-title">{title || '—'}</div>
-									{#if subtitle}<div class="ct-sub">{subtitle}</div>{/if}
-									<div style="width:32px;height:1px;background:{pal.foil};margin:8px 0;opacity:.85"></div>
-									<div class="ct-author">{author || ''}</div>
-								</div>
+								{#if !hideTitle}
+									<div style="position:absolute;left:12%;right:8%;bottom:7%">
+										<div class="ct-title">{title || '—'}</div>
+										{#if subtitle}<div class="ct-sub">{subtitle}</div>{/if}
+										<div style="width:32px;height:1px;background:{pal.foil};margin:8px 0;opacity:.85"></div>
+										<div class="ct-author">{author || ''}</div>
+									</div>
+								{/if}
 							</div>
 						</div>
 					</div>
@@ -428,6 +475,21 @@
 	.drop input {
 		display: none;
 	}
+	.check-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin: -2px 0 18px;
+		font-family: var(--font-chrome);
+		font-size: 14px;
+		color: var(--ink-soft);
+		cursor: pointer;
+	}
+	.check-row input {
+		width: 18px;
+		height: 18px;
+		accent-color: var(--oxblood);
+	}
 	.spine-sec {
 		border-top: 1px solid var(--line);
 		padding-top: 18px;
@@ -496,20 +558,27 @@
 		display: grid;
 		place-items: center;
 		width: 100%;
+		min-height: 430px;
+		cursor: grab;
+		touch-action: none;
+		user-select: none;
+	}
+	.book3d-perspective:active {
+		cursor: grabbing;
 	}
 	.book3d {
 		transform-style: preserve-3d;
-		transform: rotateY(-26deg) rotateX(4deg);
-		transition: transform 0.4s ease;
+		transform: rotateY(var(--ry)) rotateX(var(--rx));
+		transition: filter 0.2s ease;
 		filter: drop-shadow(0 30px 36px rgba(40, 28, 14, 0.4));
 	}
 	.spine-face {
 		position: absolute;
-		left: -38px;
+		left: calc(var(--book-depth) * -0.95);
 		top: 0;
-		width: 40px;
+		width: var(--book-depth);
 		height: 360px;
-		transform: rotateY(90deg) translateZ(-2px) translateX(-20px);
+		transform: rotateY(90deg) translateZ(calc(var(--book-depth) * -0.5)) translateX(calc(var(--book-depth) * -0.5));
 		transform-origin: left center;
 		display: flex;
 		flex-direction: column;
@@ -533,6 +602,7 @@
 		position: relative;
 		border-radius: 3px 7px 7px 3px;
 		overflow: hidden;
+		transform: translateZ(calc(var(--book-depth) * 0.5));
 		box-shadow: inset 6px 0 12px rgba(0, 0, 0, 0.32), inset -2px 0 4px rgba(255, 255, 255, 0.08);
 	}
 	.ct-title {

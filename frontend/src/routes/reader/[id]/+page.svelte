@@ -7,6 +7,7 @@
 	import { DEFAULT_SETTINGS } from '$lib/settings';
 	import type { Book, ManuscriptSettings } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
+	import BookCover from '$lib/components/BookCover.svelte';
 	import BookSpread from '$lib/components/BookSpread.svelte';
 	import ManuscriptPages from '$lib/components/ManuscriptPages.svelte';
 
@@ -108,6 +109,9 @@
 				<div style="color:#f0e2c8;margin-top:60px">{error}</div>
 			{:else if book}
 				<div class="mf-fade-up" style="padding:20px 0">
+					<div class="scroll-cover">
+						<BookCover {book} w={360} />
+					</div>
 					<ManuscriptPages {md} {plan} {images} settings={readerSettings} width={540} />
 				</div>
 			{/if}
@@ -205,5 +209,12 @@
 		.rd-opt {
 			transition: none;
 		}
+	}
+	.scroll-cover {
+		display: grid;
+		place-items: center;
+		margin: 0 auto 32px;
+		width: min(100%, 540px);
+		padding: 34px 0;
 	}
 </style>

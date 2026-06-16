@@ -12,6 +12,7 @@
 	import type { ManuscriptBlock, PageSeg } from '$lib/manuscript';
 	import { mediaUrl } from '$lib/api';
 	import Icon from '$lib/components/Icon.svelte';
+	import BookCover from '$lib/components/BookCover.svelte';
 
 	interface Props {
 		md: string;
@@ -26,13 +27,19 @@
 	}
 	let { md, settings: s, mode = 'spread', plan = null, images = [], book = null, showCover = true }: Props = $props();
 
+	// ---- spread + page-turn state ----
+	let spread = $state(0); // index of the left/only page (even in spread mode)
+	let turning = $state<{ dir: 'next' | 'prev' } | null>(null);
+	let leafEl = $state<HTMLDivElement>();
+
 	const hasCover = $derived(showCover);
 	const coverTitle = $derived(book?.title || plan?.title || '');
 	const coverSubtitle = $derived(book?.subtitle || plan?.subtitle || '');
 	const coverAuthor = $derived(book?.author || '');
 
 	const single = $derived(mode === 'single');
-	const per = $derived(single ? 1 : 2); // pages advanced per turn
+	const coverOnly = $derived(hasCover && !single && spread === 0);
+	const per = $derived(single || coverOnly ? 1 : 2); // pages advanced per turn
 
 	const family = $derived(fontFamilyFor(s.fontStyle));
 	const ink = $derived(inkThemeForPaper(s.paper));
@@ -42,7 +49,7 @@
 	let vh = $state(800);
 	const A4 = 1.41421;
 	const pageH = $derived(
-		single
+		single || coverOnly
 			? Math.max(360, Math.min(880, Math.min(vh - 150, (vw - 96) * A4)))
 			: Math.max(360, Math.min(760, Math.min(vh - 150, (vw - 96) / A4)))
 	);
@@ -125,38 +132,47 @@
 		};
 	});
 
-	// ---- spread + page-turn state ----
-	let spread = $state(0); // index of the left/only page (even in spread mode)
-	let turning = $state<{ dir: 'next' | 'prev' } | null>(null);
-	let leafEl = $state<HTMLDivElement>();
-
 	const total = $derived(pages.length);
 	const canNext = $derived(!turning && spread + per < total);
-	const canPrev = $derived(!turning && spread - per >= 0);
+	const canPrev = $derived(!turning && spread > 0);
 
 	// Underneath the flipping leaf we already paint the destination page(s) so
 	// they are revealed seamlessly as the leaf lifts.
-	const leftIdx = $derived(turning?.dir === 'prev' ? spread - 2 : spread);
-	const rightIdx = $derived(turning?.dir === 'next' ? spread + 3 : spread + 1);
+	const leftIdx = $derived(turning?.dir === 'prev' ? spread - 2 : turning && coverOnly ? 1 : spread);
+	const rightIdx = $derived(turning?.dir === 'next' ? (coverOnly ? 2 : spread + 3) : spread + 1);
 	const leafFront = $derived(turning?.dir === 'next' ? spread + 1 : spread);
 	const leafBack = $derived(turning?.dir === 'next' ? spread + 2 : spread - 1);
 	// Single mode: the static layer shows the destination page; the leaf is the
 	// current page peeling away to reveal it (its back is blank paper, idx -1).
-	const centerIdx = $derived(turning ? (turning.dir === 'next' ? spread + 1 : spread - 1) : spread);
-	const leafFrontIdx = $derived(single ? spread : leafFront);
-	const leafBackIdx = $derived(single ? -1 : leafBack);
+	const centerIdx = $derived(turning && single ? (turning.dir === 'next' ? spread + 1 : spread - 1) : spread);
+	const leafFrontIdx = $derived(single || coverOnly ? spread : leafFront);
+	const leafBackIdx = $derived(single ? -1 : coverOnly ? 1 : leafBack);
 
 	const lastPage = $derived(Math.min(spread + per, total));
 
 	// Keep the index aligned when the layout mode changes.
 	$effect(() => {
-		if (mode === 'spread' && spread % 2 === 1) spread = spread - 1;
+		if (mode !== 'spread') return;
+		if (hasCover) {
+			if (spread > 0 && spread % 2 === 0) spread = spread - 1;
+		} else if (spread % 2 === 1) {
+			spread = spread - 1;
+		}
 	});
 
 	async function turn(dir: 'next' | 'prev') {
 		if (turning) return;
 		if (dir === 'next' && spread + per >= total) return;
-		if (dir === 'prev' && spread - per < 0) return;
+		if (dir === 'prev' && spread <= 0) return;
+		const target = dir === 'next' ? spread + per : hasCover && spread <= 1 ? 0 : spread - per;
+		if (single) {
+			spread = target;
+			return;
+		}
+		if (dir === 'prev' && hasCover && spread === 1) {
+			spread = 0;
+			return;
+		}
 		turning = { dir };
 		await tick();
 		const el = leafEl;
@@ -201,7 +217,7 @@
 				setTimeout(finish, dur + 120);
 			});
 		}
-		spread = dir === 'next' ? spread + per : spread - per;
+		spread = target;
 		turning = null;
 	}
 
@@ -295,12 +311,10 @@
 
 <!-- dedicated cover page: cover art if present, otherwise a centered title page -->
 {#snippet coverFace()}
-	{#if book?.cover?.artUrl}
-		<img
-			src={mediaUrl(book.cover.artUrl)}
-			alt=""
-			style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"
-		/>
+	{#if book}
+		<div style="position:absolute;inset:0;display:grid;place-items:center;background:color-mix(in srgb, var(--leather) 58%, #1e1007)">
+			<BookCover {book} w={Math.round(pageH / 1.5)} />
+		</div>
 	{:else}
 		<div
 			style="position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:{padTop}px {padX}px;gap:{Math.round(
@@ -402,11 +416,15 @@
 
 	<div
 		class="bs-book"
-		style="width:{single ? pageW : pageW * 2}px;height:{pageH}px"
+		style="width:{single || (coverOnly && !turning) ? pageW : pageW * 2}px;height:{pageH}px"
 		role="group"
 		aria-label="Page {spread + 1}{single ? '' : ` to ${lastPage}`} of {total}"
 	>
-		{#if single}
+		{#if coverOnly && !turning}
+			<div class="bs-page" style="left:0;width:{pageW}px;height:{pageH}px;border-radius:4px">
+				{@render face(spread, 'single')}
+			</div>
+		{:else if single}
 			<!-- single centered page -->
 			<div class="bs-page" style="left:0;width:{pageW}px;height:{pageH}px;border-radius:4px">
 				{@render face(centerIdx, 'single')}
@@ -430,18 +448,18 @@
 				bind:this={leafEl}
 				class="bs-leaf"
 				style="width:{pageW}px;height:{pageH}px;
-					left:{!single && turning.dir === 'next' ? pageW : 0}px;
+					left:{coverOnly ? 0 : !single && turning.dir === 'next' ? pageW : 0}px;
 					transform-origin:{turning.dir === 'next' ? 'left center' : 'right center'}"
 			>
 				<div class="bs-face bs-front">
 					{@render face(
 						leafFrontIdx,
-						single ? 'single' : turning.dir === 'next' ? 'right' : 'left'
+						single || coverOnly ? 'single' : turning.dir === 'next' ? 'right' : 'left'
 					)}
 					<div class="bs-curl bs-curl-front" style="--edge:{turning.dir === 'next' ? 'left' : 'right'}"></div>
 				</div>
 				<div class="bs-face bs-back">
-					{@render face(leafBackIdx, single ? 'single' : turning.dir === 'next' ? 'left' : 'right')}
+					{@render face(leafBackIdx, single || coverOnly ? 'single' : turning.dir === 'next' ? 'left' : 'right')}
 					<div class="bs-curl bs-curl-back"></div>
 				</div>
 			</div>
