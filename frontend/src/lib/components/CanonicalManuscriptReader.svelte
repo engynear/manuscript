@@ -18,6 +18,7 @@
 	let vw = $state(1280);
 	let vh = $state(800);
 	let index = $state(0);
+	let turning = $state<0 | 1 | -1>(0);
 
 	const hasCover = $derived(showCover);
 	const total = $derived(pages.length + (hasCover ? 1 : 0));
@@ -38,8 +39,8 @@
 	const scale = $derived(targetH / baseH);
 	const pageH = $derived(Math.round(baseH * scale));
 	const pageW = $derived(Math.round(baseW * scale));
-	const canPrev = $derived(index > 0);
-	const canNext = $derived(index + per < total);
+	const canPrev = $derived(turning === 0 && index > 0);
+	const canNext = $derived(turning === 0 && index + per < total);
 	const lastVisible = $derived(Math.min(total, index + per));
 	const generatedStyle = $derived(`<${'style'}>${css}</${'style'}>`);
 
@@ -51,11 +52,22 @@
 	function go(delta: 1 | -1) {
 		if (delta > 0 && !canNext) return;
 		if (delta < 0 && !canPrev) return;
-		if (delta < 0) {
-			index = index <= 1 ? 0 : Math.max(1, index - 2);
-		} else {
-			index = coverOnly ? 1 : index + per;
+		const apply = () => {
+			if (delta < 0) {
+				index = index <= 1 ? 0 : Math.max(1, index - 2);
+			} else {
+				index = coverOnly ? 1 : index + per;
+			}
+		};
+		if (mode === 'spread' && !coverOnly) {
+			turning = delta;
+			window.setTimeout(() => {
+				apply();
+				turning = 0;
+			}, 360);
+			return;
 		}
+		apply();
 	}
 
 	function onKey(e: KeyboardEvent) {
@@ -161,11 +173,21 @@
 	</div>
 {:else}
 	<div class="cm-stage">
-		<div class="cm-book" class:single={single || coverOnly} style="height:{pageH}px">
+		<div
+			class="cm-book"
+			class:single={single || coverOnly}
+			class:turn-next={turning === 1}
+			class:turn-prev={turning === -1}
+			style="height:{pageH}px"
+		>
 			{#if coverOnly}
 				{@render coverPage()}
 			{:else if single}
-				{@render manuscriptPage(index, 'single')}
+				{#if hasCover && index === 0}
+					{@render coverPage()}
+				{:else}
+					{@render manuscriptPage(index, 'single')}
+				{/if}
 			{:else}
 				{@render manuscriptPage(index, 'left')}
 				{#if index + 1 < total}
@@ -233,6 +255,7 @@
 		box-shadow: var(--shadow-lg);
 		overflow: hidden;
 		background: #2c241b;
+		perspective: 1800px;
 	}
 	.cm-book.single {
 		width: auto;
@@ -241,6 +264,46 @@
 		position: relative;
 		overflow: hidden;
 		background: #2c241b;
+		backface-visibility: hidden;
+		transform-style: preserve-3d;
+	}
+	.cm-book.turn-next > .cm-page-shell:nth-child(2) {
+		z-index: 5;
+		transform-origin: left center;
+		animation: cm-turn-next 0.36s cubic-bezier(0.3, 0.04, 0.2, 1);
+		box-shadow: -18px 0 30px rgba(26, 13, 5, 0.28);
+	}
+	.cm-book.turn-prev > .cm-page-shell:nth-child(1) {
+		z-index: 5;
+		transform-origin: right center;
+		animation: cm-turn-prev 0.36s cubic-bezier(0.3, 0.04, 0.2, 1);
+		box-shadow: 18px 0 30px rgba(26, 13, 5, 0.28);
+	}
+	@keyframes cm-turn-next {
+		0% {
+			transform: rotateY(0deg);
+			filter: brightness(1);
+		}
+		58% {
+			filter: brightness(0.84);
+		}
+		100% {
+			transform: rotateY(-84deg);
+			filter: brightness(0.92);
+		}
+	}
+	@keyframes cm-turn-prev {
+		0% {
+			transform: rotateY(0deg);
+			filter: brightness(1);
+		}
+		58% {
+			filter: brightness(0.84);
+		}
+		100% {
+			transform: rotateY(84deg);
+			filter: brightness(0.92);
+		}
 	}
 	.cm-page {
 		position: absolute;

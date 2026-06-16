@@ -23,6 +23,25 @@
 	let error = $state('');
 	const lineCount = $derived($forgeMarkdown.split('\n').length);
 
+	function previewFrameHtml(html: string): string {
+		const previewCss = `<style>
+@media screen {
+	html, body { overflow-x: hidden !important; }
+	body { background: #2b2118 !important; }
+	.manuscript-root { min-height: 100% !important; overflow-x: hidden !important; }
+	.manuscript-book {
+		min-width: 0 !important;
+		width: fit-content !important;
+		max-width: 100% !important;
+		margin: 0 auto !important;
+		padding: 28px 0 44px !important;
+		zoom: min(.72, calc((100vw - 44px) / 794));
+	}
+}
+</style>`;
+		return html.includes('</head>') ? html.replace('</head>', `${previewCss}</head>`) : `${previewCss}${html}`;
+	}
+
 	async function generate() {
 		const user = $currentUser ?? (await auth.me());
 		if (!user) {
@@ -253,7 +272,7 @@
 				{:else if result}
 					<iframe
 						title="Manuscript preview"
-						srcdoc={result.previewHtml}
+						srcdoc={previewFrameHtml(result.previewHtml)}
 						style="display:block;width:100%;max-width:100%;box-sizing:border-box;min-height:680px;border:0;background:#2b2118;border-radius:8px"
 					></iframe>
 				{:else}
