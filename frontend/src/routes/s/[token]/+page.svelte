@@ -53,13 +53,55 @@
 		reading = book;
 	}
 
+	// ---- immersive fullscreen reading (single page + page-turn animation) ----
+	let shellEl = $state<HTMLDivElement>();
+	let immersive = $state(false);
+	let prevMode = $state<Mode>('spread');
+
+	async function enterImmersive() {
+		prevMode = mode;
+		setMode('single');
+		immersive = true;
+		try {
+			await shellEl?.requestFullscreen?.();
+		} catch {
+			// Fullscreen can be refused (e.g. iOS Safari) — the fixed overlay still
+			// gives an edge-to-edge reading surface.
+		}
+	}
+
+	async function exitImmersive() {
+		immersive = false;
+		if (mode === 'single') setMode(prevMode);
+		try {
+			if (typeof document !== 'undefined' && document.fullscreenElement) await document.exitFullscreen();
+		} catch {
+			/* ignore */
+		}
+	}
+
+	function toggleImmersive() {
+		if (immersive) exitImmersive();
+		else enterImmersive();
+	}
+
+	function onFsChange() {
+		if (typeof document !== 'undefined' && !document.fullscreenElement && immersive) {
+			immersive = false;
+			if (mode === 'single') setMode(prevMode);
+		}
+	}
+
 	onMount(async () => {
+		document.addEventListener('fullscreenchange', onFsChange);
 		try {
 			data = await shares.public($page.params.token ?? '');
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Not found';
 		}
 	});
+
+	onMount(() => () => document.removeEventListener('fullscreenchange', onFsChange));
 </script>
 
 <div class="paper-grain" style="min-height:100vh">
@@ -118,8 +160,13 @@
 </div>
 
 {#if reading}
-	<div class="leather-surface" style="position:fixed;inset:0;z-index:90;display:flex;flex-direction:column">
-		<div style="position:relative;z-index:3;display:flex;align-items:center;gap:12px;padding:14px 22px">
+	<div
+		bind:this={shellEl}
+		class="leather-surface"
+		class:immersive
+		style="position:fixed;inset:0;z-index:90;display:flex;flex-direction:column"
+	>
+		<div class="rd-topbar" style="position:relative;z-index:3;display:flex;align-items:center;gap:12px;padding:14px 22px">
 			<button class="reader-btn" onclick={() => (reading = null)}>
 				<Icon name="chevL" size={17} />{$t('back_shelf')}
 			</button>
@@ -134,6 +181,14 @@
 						<Icon name="download" size={17} />{$t('download')}
 					</a>
 				{/if}
+				<button
+					class="reader-btn"
+					aria-label={$t('immersive')}
+					title={$t('immersive')}
+					onclick={toggleImmersive}
+				>
+					<Icon name="expand" size={17} />
+				</button>
 				<div class="rd-menu">
 					<button
 						class="reader-btn"
@@ -180,14 +235,21 @@
 			</div>
 		{:else}
 			<div
+				class="rd-stage-wrap"
 				style="position:relative;z-index:1;flex:1;min-height:0;overflow:hidden;display:grid;place-items:center;padding:0 16px 18px"
 			>
 				<div class="mf-fade-up" style="width:100%;height:100%">
 					{#key mode}
-						<BookSpread md={readingMd} plan={readingPlan} images={readingImages} settings={readingBase} {mode} book={reading} />
+						<BookSpread md={readingMd} plan={readingPlan} images={readingImages} settings={readingBase} {mode} book={reading} {immersive} />
 					{/key}
 				</div>
 			</div>
+		{/if}
+
+		{#if immersive}
+			<button class="rd-exit" aria-label={$t('exit_immersive')} title={$t('exit_immersive')} onclick={exitImmersive}>
+				<Icon name="compress" size={18} />
+			</button>
 		{/if}
 	</div>
 {/if}
@@ -224,6 +286,42 @@
 		pointer-events: auto;
 	}
 	.rd-menu { position: relative; }
+	/* immersive fullscreen: hide chrome, page reaches the 10px side margins */
+	.immersive .rd-topbar {
+		display: none !important;
+	}
+	.immersive .rd-stage-wrap {
+		padding: 0 !important;
+	}
+	.rd-exit {
+		position: fixed;
+		top: max(12px, env(safe-area-inset-top));
+		right: max(12px, env(safe-area-inset-right));
+		z-index: 20;
+		display: grid;
+		place-items: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 999px;
+		border: 1px solid rgba(240, 226, 200, 0.18);
+		background: rgba(28, 16, 6, 0.42);
+		color: #f0e2c8;
+		cursor: pointer;
+		backdrop-filter: blur(3px);
+		opacity: 0.5;
+		transition:
+			opacity 0.2s ease,
+			background 0.18s ease,
+			transform 0.12s ease;
+	}
+	.rd-exit:hover,
+	.rd-exit:focus-visible {
+		opacity: 1;
+		background: rgba(28, 16, 6, 0.6);
+	}
+	.rd-exit:active {
+		transform: scale(0.92);
+	}
 	.brand-link,
 	.brand-title {
 		color: inherit;

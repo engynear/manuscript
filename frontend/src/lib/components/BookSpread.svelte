@@ -24,8 +24,19 @@
 		/** When set, the reader opens on a dedicated cover page. */
 		book?: Book | null;
 		showCover?: boolean;
+		/** Mobile fullscreen: drop the side ornament and let the page span the screen. */
+		immersive?: boolean;
 	}
-	let { md, settings: s, mode = 'spread', plan = null, images = [], book = null, showCover = true }: Props = $props();
+	let {
+		md,
+		settings: s,
+		mode = 'spread',
+		plan = null,
+		images = [],
+		book = null,
+		showCover = true,
+		immersive = false
+	}: Props = $props();
 
 	// ---- spread + page-turn state ----
 	let spread = $state(0); // index of the left/only page (even in spread mode)
@@ -48,17 +59,25 @@
 	let vw = $state(1280);
 	let vh = $state(800);
 	const A4 = 1.41421;
-	const pageH = $derived(
-		single || coverOnly
-			? Math.max(360, Math.min(880, Math.min(vh - 150, (vw - 96) * A4)))
-			: Math.max(360, Math.min(760, Math.min(vh - 150, (vw - 96) / A4)))
+	// Mobile fullscreen single page: span the screen edge-to-edge with a 10px
+	// margin per side; height follows A4 but is capped to leave room for the footer.
+	const immersivePage = $derived(immersive && (single || coverOnly));
+	const pageW = $derived(
+		immersivePage
+			? Math.round(Math.min(vw - 20, (vh - 96) / A4))
+			: Math.round(
+					(single || coverOnly
+						? Math.max(360, Math.min(880, Math.min(vh - 150, (vw - 96) * A4)))
+						: Math.max(360, Math.min(760, Math.min(vh - 150, (vw - 96) / A4)))) / A4
+				)
 	);
-	const pageW = $derived(Math.round(pageH / A4));
+	const pageH = $derived(Math.round(pageW * A4));
 
 	const padX = $derived(Math.round(pageW * 0.11));
 	const padTop = $derived(Math.round(pageH * 0.085));
 	const padBot = $derived(Math.round(pageH * 0.07));
-	const ornW = $derived(Math.round(pageW * 0.15));
+	// No side ornament in immersive mode, so no gutter reserved for it.
+	const ornW = $derived(immersive ? 0 : Math.round(pageW * 0.15));
 	const fs = $derived(Math.max(14, Math.round(pageW * 0.044)));
 	const contentH = $derived(pageH - padTop - padBot);
 
@@ -165,10 +184,6 @@
 		if (dir === 'next' && spread + per >= total) return;
 		if (dir === 'prev' && spread <= 0) return;
 		const target = dir === 'next' ? spread + per : hasCover && spread <= 1 ? 0 : spread - per;
-		if (single) {
-			spread = target;
-			return;
-		}
 		if (dir === 'prev' && hasCover && spread === 1) {
 			spread = 0;
 			return;
@@ -219,6 +234,26 @@
 		}
 		spread = target;
 		turning = null;
+	}
+
+	// ---- touch swipe (mobile page turns) ----
+	let touchX = 0;
+	let touchY = 0;
+	let touchT = 0;
+	function onTouchStart(e: TouchEvent) {
+		const t = e.changedTouches[0];
+		touchX = t.clientX;
+		touchY = t.clientY;
+		touchT = Date.now();
+	}
+	function onTouchEnd(e: TouchEvent) {
+		const t = e.changedTouches[0];
+		const dx = t.clientX - touchX;
+		const dy = t.clientY - touchY;
+		// horizontal, decisive, and not a slow drag/scroll
+		if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.6 && Date.now() - touchT < 700) {
+			turn(dx < 0 ? 'next' : 'prev');
+		}
 	}
 
 	function onKey(e: KeyboardEvent) {
@@ -368,7 +403,7 @@
 		{#if hasCover && idx === 0}
 			{@render coverFace()}
 		{:else if pages[idx]}
-			{#if s.ornament}
+			{#if s.ornament && !immersive}
 				<img
 					src={s.ornament}
 					alt=""
@@ -391,7 +426,7 @@
 	</div>
 {/snippet}
 
-<div class="bs-stage" style="--pw:{pageW}px;--ph:{pageH}px">
+<div class="bs-stage" class:immersive style="--pw:{pageW}px;--ph:{pageH}px">
 	<!-- hidden measuring column at one page's content width -->
 	<div
 		bind:this={measureEl}
@@ -420,6 +455,8 @@
 		style="width:{single || (coverOnly && !turning) ? pageW : pageW * 2}px;height:{pageH}px"
 		role="group"
 		aria-label="Page {spread + 1}{single ? '' : ` to ${lastPage}`} of {total}"
+		ontouchstart={onTouchStart}
+		ontouchend={onTouchEnd}
 	>
 		{#if coverOnly && !turning}
 			<div class="bs-page" style="left:0;width:{pageW}px;height:{pageH}px;border-radius:4px">
@@ -514,6 +551,18 @@
 		width: 100%;
 		height: 100%;
 		perspective: 2600px;
+	}
+	/* Mobile fullscreen: center the page itself by lifting the footer out of the
+	   flex flow (otherwise the footer below shifts the page upward). */
+	.bs-stage.immersive {
+		gap: 0;
+	}
+	.bs-stage.immersive .bs-footer {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: max(14px, env(safe-area-inset-bottom));
+		justify-content: center;
 	}
 	.bs-book {
 		position: relative;
