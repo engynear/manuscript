@@ -95,6 +95,14 @@
 			>
 				{displayTitle}
 			</div>
+			{#if book.author}
+				<div style="width:{26 * sc}px;height:1px;background:{pal.foil};margin:{7 * sc}px 0;opacity:.8"></div>
+				<div
+					style="font-family:var(--font-display);font-size:{Math.max(8, 9.5 * sc)}px;letter-spacing:.16em;text-transform:uppercase;opacity:.85;color:{titleColor}"
+				>
+					{book.author}
+				</div>
+			{/if}
 		</div>
 	{/if}
 </div>

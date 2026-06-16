@@ -62,7 +62,7 @@
 	}
 
 	function defaultCoverText(t: string, a: string) {
-		return [t, a].filter(Boolean).join('\n\n');
+		return t || a;
 	}
 
 	function uniqueUrls(urls: string[]) {
@@ -206,7 +206,7 @@
 								}}
 							></button>
 						{/each}
-						<label class="sw custom-color" title={$t('cover_color')}>
+						<label class="tpl custom-color" title={$t('cover_color')}>
 							<input
 								type="color"
 								value={coverColor}
@@ -214,6 +214,10 @@
 							/>
 						</label>
 					</div>
+					<label class="inline-color">
+						<span>{$t('cover_text_color')}</span>
+						<input type="color" bind:value={coverTextColor} />
+					</label>
 				{:else if tab === 'generate'}
 					<div style="margin-bottom:18px">
 						<textarea
@@ -257,33 +261,7 @@
 
 				<!-- spine -->
 				<div class="spine-sec">
-					<div class="lbl" style="margin-bottom:10px">{$t('colors')}</div>
-					<div class="color-grid">
-						<label class="color-field">
-							<span>{$t('cover_color')}</span>
-							<input
-								type="color"
-								value={coverColor}
-								oninput={(e) => (pal = { ...pal, cover: (e.currentTarget as HTMLInputElement).value })}
-							/>
-						</label>
-						<label class="color-field">
-							<span>{$t('cover_text_color')}</span>
-							<input type="color" bind:value={coverTextColor} />
-						</label>
-						<label class="color-field">
-							<span>{$t('spine_color')}</span>
-							<input
-								type="color"
-								value={pal.spine}
-								oninput={(e) => (pal = { ...pal, spine: (e.currentTarget as HTMLInputElement).value })}
-							/>
-						</label>
-						<label class="color-field">
-							<span>{$t('spine_text_color')}</span>
-							<input type="color" bind:value={spineTextColor} />
-						</label>
-					</div>
+					<div class="lbl" style="margin-bottom:10px">{$t('spine')}</div>
 					<div class="sub" style="margin-bottom:8px">{$t('spine_color')}</div>
 					<div class="swatches">
 						{#each spineColors as c}
@@ -305,6 +283,10 @@
 							/>
 						</label>
 					</div>
+					<label class="inline-color">
+						<span>{$t('spine_text_color')}</span>
+						<input type="color" bind:value={spineTextColor} />
+					</label>
 					<label class="f">
 						<span class="lbl">{$t('spine_title')}</span>
 						<textarea rows="3" bind:value={spineTitle} placeholder={title}></textarea>
@@ -325,6 +307,7 @@
 					<CoverBook3D
 						{artSrc}
 						{coverText}
+						coverAuthor={author}
 						spineText={spineTitle}
 						{coverColor}
 						spineColor={pal.spine}
@@ -558,17 +541,12 @@
 		opacity: 0;
 		cursor: pointer;
 	}
-	.color-grid {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 10px;
-		margin-bottom: 16px;
-	}
-	.color-field {
-		display: grid;
-		grid-template-columns: 1fr 42px;
+	.inline-color {
+		display: flex;
 		align-items: center;
+		justify-content: space-between;
 		gap: 10px;
+		margin: -4px 0 16px;
 		padding: 8px 10px;
 		border: 1px solid var(--line);
 		border-radius: 8px;
@@ -576,7 +554,7 @@
 		font-size: 13px;
 		color: var(--ink-soft);
 	}
-	.color-field input {
+	.inline-color input {
 		width: 38px;
 		height: 28px;
 		padding: 0;

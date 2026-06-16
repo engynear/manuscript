@@ -4,6 +4,7 @@
 	interface Props {
 		artSrc?: string;
 		coverText: string;
+		coverAuthor: string;
 		spineText: string;
 		coverColor: string;
 		spineColor: string;
@@ -17,6 +18,7 @@
 	let {
 		artSrc = '',
 		coverText,
+		coverAuthor,
 		spineText,
 		coverColor,
 		spineColor,
@@ -36,21 +38,21 @@
 
 	type RenderOptions = Required<Props>;
 
-	const opts = $derived({
-		artSrc,
-		coverText,
-		spineText,
-		coverColor,
-		spineColor,
-		coverTextColor,
-		spineTextColor,
-		foilColor,
-		hideTitle,
-		pageCount
-	});
-
 	$effect(() => {
-		if (renderScene) renderScene(opts);
+		const next = {
+			artSrc,
+			coverText,
+			coverAuthor,
+			spineText,
+			coverColor,
+			spineColor,
+			coverTextColor,
+			spineTextColor,
+			foilColor,
+			hideTitle,
+			pageCount
+		};
+		if (renderScene) renderScene(next);
 	});
 
 	onMount(async () => {
@@ -94,8 +96,8 @@
 			let book: import('three').Mesh | null = null;
 			let frontTexture: import('three').CanvasTexture | null = null;
 			let spineTexture: import('three').CanvasTexture | null = null;
-			let currentArt = '';
 			let disposed = false;
+			let drawVersion = 0;
 			let dragging = false;
 			let dragStart = { x: 0, y: 0, rx: 0, ry: 0 };
 
@@ -129,8 +131,10 @@
 
 			async function draw(next: RenderOptions) {
 				if (disposed) return;
+				const version = ++drawVersion;
 				const depth = Math.max(0.64, Math.min(1.35, 0.58 + Math.sqrt(next.pageCount || 180) * 0.035));
 				const frontCanvas = await makeFrontCanvas(next);
+				if (disposed || version !== drawVersion) return;
 				const spineCanvas = makeSpineCanvas(next);
 				const pageCanvas = makePageCanvas();
 
@@ -156,7 +160,6 @@
 				book.castShadow = true;
 				book.receiveShadow = true;
 				group.add(book);
-				currentArt = next.artSrc;
 			}
 
 			renderScene = (next) => {
@@ -183,7 +186,19 @@
 			host.addEventListener('pointercancel', onUp);
 			window.addEventListener('resize', resize);
 			resize();
-			await draw(opts);
+			await draw({
+				artSrc,
+				coverText,
+				coverAuthor,
+				spineText,
+				coverColor,
+				spineColor,
+				coverTextColor,
+				spineTextColor,
+				foilColor,
+				hideTitle,
+				pageCount
+			});
 			ready = true;
 			animate();
 
@@ -252,8 +267,8 @@
 		ctx.fillStyle = shade;
 		ctx.fillRect(0, 0, c.width, c.height);
 
-		if (!o.hideTitle && o.coverText.trim()) {
-			drawMultilineText(ctx, o.coverText, {
+		if (!o.hideTitle) {
+			const textMetrics = drawMultilineText(ctx, o.coverText, {
 				x: 106,
 				y: 920,
 				maxWidth: 690,
@@ -262,6 +277,21 @@
 				lineHeight: 70,
 				align: 'left'
 			});
+			if (o.coverAuthor.trim()) {
+				const authorY = 920 + textMetrics.height + 48;
+				ctx.fillStyle = o.foilColor;
+				ctx.fillRect(106, authorY - 22, 118, 4);
+				drawMultilineText(ctx, o.coverAuthor.toUpperCase(), {
+					x: 106,
+					y: authorY + 14,
+					maxWidth: 690,
+					color: o.coverTextColor,
+					size: 34,
+					lineHeight: 46,
+					align: 'left',
+					letterSpacing: 8
+				});
+			}
 		}
 		return c;
 	}
@@ -300,15 +330,7 @@
 		ctx.save();
 		ctx.translate(c.width / 2, c.height / 2);
 		ctx.rotate(-Math.PI / 2);
-		drawMultilineText(ctx, o.spineText || o.coverText, {
-			x: -520,
-			y: 14,
-			maxWidth: 1040,
-			color: o.spineTextColor,
-			size: 66,
-			lineHeight: 74,
-			align: 'center'
-		});
+		drawCenteredText(ctx, o.spineText || o.coverText, o.spineTextColor, 72, 82, 1040);
 		ctx.restore();
 		return c;
 	}
@@ -341,9 +363,18 @@
 	function drawMultilineText(
 		ctx: CanvasRenderingContext2D,
 		text: string,
-		opts: { x: number; y: number; maxWidth: number; color: string; size: number; lineHeight: number; align: CanvasTextAlign }
+		opts: {
+			x: number;
+			y: number;
+			maxWidth: number;
+			color: string;
+			size: number;
+			lineHeight: number;
+			align: CanvasTextAlign;
+			letterSpacing?: number;
+		}
 	) {
-		const lines = text.split(/\r?\n/);
+		const lines = (text || '').split(/\r?\n/).filter((line) => line.length || text.trim().length === 0);
 		let size = opts.size;
 		ctx.textAlign = opts.align;
 		ctx.textBaseline = 'top';
@@ -359,9 +390,50 @@
 		const lineHeight = Math.max(size * 1.12, opts.lineHeight * (size / opts.size));
 		const startX = opts.align === 'center' ? opts.x + opts.maxWidth / 2 : opts.x;
 		lines.forEach((line, index) => {
-			ctx.fillText(line || ' ', startX, opts.y + index * lineHeight, opts.maxWidth);
+			if (opts.letterSpacing) {
+				drawLetterSpaced(ctx, line || ' ', startX, opts.y + index * lineHeight, opts.letterSpacing);
+			} else {
+				ctx.fillText(line || ' ', startX, opts.y + index * lineHeight, opts.maxWidth);
+			}
 		});
 		ctx.shadowColor = 'transparent';
+		return { size, lineHeight, height: lines.length * lineHeight };
+	}
+
+	function drawCenteredText(
+		ctx: CanvasRenderingContext2D,
+		text: string,
+		color: string,
+		baseSize: number,
+		baseLineHeight: number,
+		maxWidth: number
+	) {
+		const lines = (text || '').split(/\r?\n/).filter(Boolean);
+		let size = baseSize;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.fillStyle = color;
+		ctx.shadowColor = 'rgba(0,0,0,.42)';
+		ctx.shadowBlur = 5;
+		ctx.shadowOffsetY = 2;
+		do {
+			ctx.font = `700 ${size}px Cinzel, Georgia, serif`;
+			if (lines.every((line) => ctx.measureText(line).width <= maxWidth)) break;
+			size -= 2;
+		} while (size > 24);
+		const lineHeight = Math.max(size * 1.12, baseLineHeight * (size / baseSize));
+		lines.forEach((line, index) => {
+			ctx.fillText(line, 0, (index - (lines.length - 1) / 2) * lineHeight, maxWidth);
+		});
+		ctx.shadowColor = 'transparent';
+	}
+
+	function drawLetterSpaced(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, spacing: number) {
+		let cursor = x;
+		for (const ch of text) {
+			ctx.fillText(ch, cursor, y);
+			cursor += ctx.measureText(ch).width + spacing;
+		}
 	}
 
 	function loadImage(src: string) {
