@@ -15,6 +15,7 @@
 	const pal = $derived(paletteFor(book));
 	const coverColor = $derived(pal.cover ?? pal.spine);
 	const artSrc = $derived(mediaUrl(book.cover?.artUrl));
+	let artFailed = $state(false);
 	const titleColor = $derived(book.cover?.titleColor || pal.fg);
 	const hideTitle = $derived(Boolean(book.cover?.hideTitle));
 	const h = $derived(Math.round(w * 1.5));
@@ -36,6 +37,11 @@
 			return Math.max(min, Math.min(base, byWord, byLen));
 		})()
 	);
+
+	$effect(() => {
+		void artSrc;
+		artFailed = false;
+	});
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
@@ -55,8 +61,13 @@
 	<div style="position:absolute;left:{6 * sc}px;top:0;bottom:0;width:1.5px;background:rgba(0,0,0,.28)"></div>
 	<div style="position:absolute;left:{9 * sc}px;top:0;bottom:0;width:1px;background:rgba(255,255,255,.08)"></div>
 
-	{#if artSrc}
-		<img src={artSrc} alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
+	{#if artSrc && !artFailed}
+		<img
+			src={artSrc}
+			alt=""
+			onerror={() => (artFailed = true)}
+			style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"
+		/>
 	{:else}
 		<!-- procedural illumination panel -->
 		<div

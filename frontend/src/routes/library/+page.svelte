@@ -10,10 +10,12 @@
 
 	let books = $state<Book[]>([]);
 	let loading = $state(true);
+	let refreshing = $state(false);
 	let error = $state('');
 	let q = $state('');
 	let sort = $state<'recent' | 'title' | 'author'>('recent');
 	let addToShelfBook = $state<string | null>(null);
+	const CACHE_KEY = 'mf:library-books-cache';
 
 	const filtered = $derived(
 		books
@@ -28,24 +30,57 @@
 			)
 	);
 
+	function restoreCache() {
+		if (typeof localStorage === 'undefined') return;
+		try {
+			const cached = localStorage.getItem(CACHE_KEY);
+			if (!cached) return;
+			const parsed = JSON.parse(cached) as Book[];
+			if (Array.isArray(parsed)) {
+				books = parsed;
+				loading = false;
+			}
+		} catch {
+			localStorage.removeItem(CACHE_KEY);
+		}
+	}
+
+	function writeCache(next: Book[]) {
+		if (typeof localStorage === 'undefined') return;
+		localStorage.setItem(CACHE_KEY, JSON.stringify(next));
+	}
+
 	async function load() {
-		loading = true;
+		loading = books.length === 0;
+		refreshing = books.length > 0;
 		error = '';
 		try {
 			books = await booksApi.list();
+			writeCache(books);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load library';
 		} finally {
 			loading = false;
+			refreshing = false;
 		}
 	}
 
-	async function remove(id: string) {
-		await booksApi.remove(id);
-		books = books.filter((b) => b.id !== id);
+	async function remove(book: Book) {
+		if (!confirm($t('delete_book_confirm'))) return;
+		const previous = books;
+		books = books.filter((b) => b.id !== book.id);
+		writeCache(books);
+		try {
+			await booksApi.remove(book.id);
+		} catch (e) {
+			books = previous;
+			writeCache(previous);
+			error = e instanceof Error ? e.message : 'Failed to delete book';
+		}
 	}
 
 	onMount(async () => {
+		restoreCache();
 		// Wait for session restore before guarding (token may still be resolving).
 		const user = $currentUser ?? (await auth.me());
 		if (!user) {
@@ -76,6 +111,9 @@
 			>{filtered.length} {filtered.length === 1 ? $t('book_count_one') : $t('books_count')}</span
 		>
 		<div style="flex:1"></div>
+		{#if refreshing}
+			<span class="refresh-dot" aria-label="Refreshing library"></span>
+		{/if}
 		<div
 			style="display:flex;align-items:center;gap:8px;padding:6px 8px 6px 14px;border-radius:100px;border:1px solid var(--line-strong);background:var(--paper-card)"
 		>
@@ -89,8 +127,16 @@
 	</div>
 
 	{#if loading}
-		<div style="text-align:center;padding:70px;color:var(--ink-faint)">…</div>
-	{:else if error}
+		<div class="skeleton-grid" aria-label="Loading library">
+			{#each Array(8) as _}
+				<div class="skeleton-card">
+					<div class="skeleton-cover"></div>
+					<div class="skeleton-line title"></div>
+					<div class="skeleton-line"></div>
+				</div>
+			{/each}
+		</div>
+	{:else if error && books.length === 0}
 		<div style="color:var(--oxblood)">{error}</div>
 	{:else if filtered.length === 0}
 		<div style="text-align:center;padding:70px 20px">
@@ -120,7 +166,7 @@
 								</a>
 							{/if}
 							<button class="qa" title={$t('add_shelf')} onclick={() => (addToShelfBook = book.id)}><Icon name="shelves" size={16} /></button>
-							<button class="qa danger" title={$t('del')} onclick={() => remove(book.id)}><Icon name="trash" size={16} /></button>
+							<button class="qa danger" title={$t('del')} onclick={() => remove(book)}><Icon name="trash" size={16} /></button>
 						</div>
 					</div>
 					<button class="meta" onclick={() => goto(`/reader/${book.id}`)}>
@@ -244,5 +290,62 @@
 		font-size: 13.5px;
 		color: var(--ink-faint);
 		margin-top: 3px;
+	}
+	.refresh-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 999px;
+		background: var(--gilt);
+		box-shadow: 0 0 0 4px rgba(201, 164, 76, 0.14);
+	}
+	.skeleton-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		gap: 34px 28px;
+	}
+	.skeleton-card {
+		display: grid;
+		gap: 12px;
+	}
+	.skeleton-cover,
+	.skeleton-line {
+		position: relative;
+		overflow: hidden;
+		background: color-mix(in srgb, var(--paper-card) 72%, var(--paper-deep));
+	}
+	.skeleton-cover {
+		width: 180px;
+		height: 270px;
+		border-radius: 3px 6px 6px 3px;
+		box-shadow: var(--shadow-sm);
+	}
+	.skeleton-line {
+		width: 130px;
+		height: 12px;
+		border-radius: 999px;
+	}
+	.skeleton-line.title {
+		width: 156px;
+		height: 15px;
+	}
+	.skeleton-cover::after,
+	.skeleton-line::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		transform: translateX(-100%);
+		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.34), transparent);
+		animation: skeleton-sheen 1.25s ease-in-out infinite;
+	}
+	@keyframes skeleton-sheen {
+		to {
+			transform: translateX(100%);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.skeleton-cover::after,
+		.skeleton-line::after {
+			animation: none;
+		}
 	}
 </style>

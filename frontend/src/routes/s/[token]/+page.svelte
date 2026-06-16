@@ -65,9 +65,11 @@
 <div class="paper-grain" style="min-height:100vh">
 	<header style="border-bottom:1px solid var(--line);background:var(--paper-card)">
 		<div style="max-width:1200px;margin:0 auto;padding:16px 26px;display:flex;align-items:center;gap:14px">
-			<Monogram size={34} />
+			<a href="/" class="brand-link" aria-label="Manuscript Forge">
+				<Monogram size={34} />
+			</a>
 			<div style="flex:1">
-				<div style="font-family:var(--font-display);font-size:15px;font-weight:700">Manuscript Forge</div>
+				<a href="/" class="brand-title">Manuscript Forge</a>
 				<div style="font-size:12.5px;color:var(--ink-faint)">{$t('shared_by')} {data?.ownerName ?? ''}</div>
 			</div>
 			<span class="mf-chip" style="color:var(--gilt);border-color:var(--gilt)">{$t('read_only')}</span>
@@ -171,7 +173,7 @@
 			>
 				<div class="mf-fade-up" style="padding:20px 0">
 					<div class="scroll-cover">
-						<BookCover book={reading} w={360} />
+						<BookCover book={reading} w={540} />
 					</div>
 					<ManuscriptPages md={readingMd} plan={readingPlan} images={readingImages} settings={readingSettings} width={540} />
 				</div>
@@ -222,6 +224,27 @@
 		pointer-events: auto;
 	}
 	.rd-menu { position: relative; }
+	.brand-link,
+	.brand-title {
+		color: inherit;
+		text-decoration: none;
+	}
+	.brand-link {
+		display: grid;
+		place-items: center;
+		border-radius: 8px;
+	}
+	.brand-title {
+		display: inline-block;
+		font-family: var(--font-display);
+		font-size: 15px;
+		font-weight: 700;
+	}
+	.brand-link:focus-visible,
+	.brand-title:focus-visible {
+		outline: 2px solid var(--gilt);
+		outline-offset: 3px;
+	}
 	.scroll-cover {
 		display: grid;
 		place-items: center;

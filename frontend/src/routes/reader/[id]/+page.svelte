@@ -110,7 +110,7 @@
 			{:else if book}
 				<div class="mf-fade-up" style="padding:20px 0">
 					<div class="scroll-cover">
-						<BookCover {book} w={360} />
+						<BookCover {book} w={540} />
 					</div>
 					<ManuscriptPages {md} {plan} {images} settings={readerSettings} width={540} />
 				</div>

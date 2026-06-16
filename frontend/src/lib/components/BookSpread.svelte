@@ -416,6 +416,7 @@
 
 	<div
 		class="bs-book"
+		class:cover-opening={Boolean(turning && coverOnly)}
 		style="width:{single || (coverOnly && !turning) ? pageW : pageW * 2}px;height:{pageH}px"
 		role="group"
 		aria-label="Page {spread + 1}{single ? '' : ` to ${lastPage}`} of {total}"
@@ -519,6 +520,9 @@
 		transform-style: preserve-3d;
 		border-radius: 4px;
 		box-shadow: var(--shadow-lg);
+	}
+	.bs-book.cover-opening {
+		overflow: hidden;
 	}
 	.bs-spine {
 		position: absolute;

@@ -21,8 +21,8 @@
 	let spineTitle = $state('');
 	let pal = $state<Palette>(PALETTES[0]);
 	let hideTitle = $state(false);
-	let rotateX = $state(4);
-	let rotateY = $state(-26);
+	let rotateX = $state(5);
+	let rotateY = $state(-38);
 	let dragStart = $state<{ x: number; y: number; rx: number; ry: number } | null>(null);
 
 	type Tab = 'templates' | 'generate' | 'upload';
@@ -34,7 +34,9 @@
 
 	const artSrc = $derived(artUrl ? mediaUrl(artUrl) : '');
 	const coverColor = $derived(pal.cover ?? pal.spine);
-	const bookDepth = $derived(Math.round(Math.max(28, Math.min(74, 30 + Math.sqrt(book?.pageCount ?? 180) * 2.4))));
+	const bookDepth = $derived(Math.round(Math.max(54, Math.min(112, 48 + Math.sqrt(book?.pageCount ?? 180) * 3.4))));
+	const spineFont = $derived(Math.round(Math.max(11, Math.min(17, bookDepth * 0.24))));
+	let previewArtFailed = $state(false);
 
 	// Spine colours from the design (a curated subset of the palette spines).
 	const spineColors = [
@@ -53,6 +55,11 @@
 		artUrl = b.cover?.artUrl ?? '';
 		hideTitle = Boolean(b.cover?.hideTitle);
 	}
+
+	$effect(() => {
+		void artSrc;
+		previewArtFailed = false;
+	});
 
 	async function onFile(e: Event) {
 		const input = e.target as HTMLInputElement;
@@ -116,7 +123,7 @@
 
 	function rotateBook(e: PointerEvent) {
 		if (!dragStart) return;
-		rotateY = Math.max(-64, Math.min(34, dragStart.ry + (e.clientX - dragStart.x) * 0.22));
+		rotateY = Math.max(-58, Math.min(-10, dragStart.ry + (e.clientX - dragStart.x) * 0.18));
 		rotateX = Math.max(-16, Math.min(18, dragStart.rx - (e.clientY - dragStart.y) * 0.12));
 	}
 
@@ -260,10 +267,6 @@
 
 			<!-- live preview -->
 			<div class="mf-card preview">
-				<div style="display:flex;gap:18px;margin-bottom:24px">
-					<span class="mf-chip">{$t('front')}</span>
-					<span class="mf-chip">{$t('spine')}</span>
-				</div>
 				<div class="stage">
 					<div
 						class="book3d-perspective"
@@ -280,13 +283,16 @@
 							<!-- spine face -->
 							<div
 								class="spine-face"
-								style="background:linear-gradient(90deg,{shade(pal.spine, 0.7)},{pal.spine} 50%,{shade(
+								style="background:linear-gradient(90deg,{shade(pal.spine, 0.72)},{pal.spine} 38%,{shade(
 									pal.spine,
-									0.8
+									1.12
+								)} 62%,{shade(
+									pal.spine,
+									0.78
 								)});color:{pal.fg}"
 							>
 								<div style="width:60%;height:1.5px;background:{pal.foil}"></div>
-								<div class="spine-text">{spineTitle || title}</div>
+								<div class="spine-text" style="font-size:{spineFont}px">{spineTitle || title}</div>
 								<div style="width:60%;height:1.5px;background:{pal.foil}"></div>
 							</div>
 							<!-- front cover -->
@@ -298,8 +304,13 @@
 								)});color:{pal.fg}"
 							>
 								<div style="position:absolute;left:10px;top:0;bottom:0;width:1.5px;background:rgba(0,0,0,.25)"></div>
-								{#if artSrc}
-									<img src={artSrc} alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
+								{#if artSrc && !previewArtFailed}
+									<img
+										src={artSrc}
+										alt=""
+										onerror={() => (previewArtFailed = true)}
+										style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"
+									/>
 								{:else}
 									{@render coverArt(pal)}
 								{/if}
@@ -312,6 +323,7 @@
 									</div>
 								{/if}
 							</div>
+							<div class="back" style="background:{pal.spine}"></div>
 						</div>
 					</div>
 				</div>
@@ -567,6 +579,9 @@
 		cursor: grabbing;
 	}
 	.book3d {
+		position: relative;
+		width: 244px;
+		height: 360px;
 		transform-style: preserve-3d;
 		transform: rotateY(var(--ry)) rotateX(var(--rx));
 		transition: filter 0.2s ease;
@@ -574,11 +589,32 @@
 	}
 	.spine-face {
 		position: absolute;
-		left: calc(var(--book-depth) * -0.95);
+		left: 0;
 		top: 0;
 		width: var(--book-depth);
 		height: 360px;
-		transform: rotateY(90deg) translateZ(calc(var(--book-depth) * -0.5)) translateX(calc(var(--book-depth) * -0.5));
+		transform-origin: left center;
+		transform: rotateY(-90deg);
+		backface-visibility: hidden;
+		box-shadow: inset -8px 0 16px rgba(0, 0, 0, 0.28), inset 5px 0 10px rgba(255, 255, 255, 0.08);
+		overflow: hidden;
+	}
+	.spine-face::before,
+	.spine-face::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		width: 1px;
+		background: rgba(0, 0, 0, 0.22);
+	}
+	.spine-face::before {
+		left: 9px;
+	}
+	.spine-face::after {
+		right: 9px;
+	}
+	.spine-face {
 		transform-origin: left center;
 		display: flex;
 		flex-direction: column;
@@ -591,19 +627,35 @@
 		writing-mode: vertical-rl;
 		transform: rotate(180deg);
 		font-family: var(--font-display);
-		font-weight: 600;
-		font-size: 13px;
-		letter-spacing: 0.04em;
+		font-weight: 700;
+		line-height: 1.05;
+		letter-spacing: 0.02em;
+		max-height: 260px;
+		max-width: calc(var(--book-depth) - 16px);
+		text-align: center;
+		overflow-wrap: anywhere;
+		word-break: break-word;
+		overflow: hidden;
 		text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 	}
 	.front {
 		width: 244px;
 		height: 360px;
-		position: relative;
+		position: absolute;
+		inset: 0;
 		border-radius: 3px 7px 7px 3px;
 		overflow: hidden;
 		transform: translateZ(calc(var(--book-depth) * 0.5));
+		backface-visibility: hidden;
 		box-shadow: inset 6px 0 12px rgba(0, 0, 0, 0.32), inset -2px 0 4px rgba(255, 255, 255, 0.08);
+	}
+	.back {
+		position: absolute;
+		inset: 0;
+		border-radius: 3px 7px 7px 3px;
+		transform: rotateY(180deg) translateZ(calc(var(--book-depth) * 0.5));
+		backface-visibility: hidden;
+		box-shadow: inset -8px 0 14px rgba(0, 0, 0, 0.24);
 	}
 	.ct-title {
 		font-family: var(--font-display);
