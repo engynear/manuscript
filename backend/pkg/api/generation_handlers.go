@@ -108,15 +108,16 @@ var (
 	markdownEmphasis = regexp.MustCompile(`\*([^*]+)\*`)
 	markdownMarker   = regexp.MustCompile(`[*_` + "`" + `]+`)
 	markdownHeading  = regexp.MustCompile(`^(#{1,6})\s+(.+)$`)
+	shortWordBreak   = regexp.MustCompile(`(^|[\s(«"“])([A-Za-zА-Яа-яЁё]{1,2})\s+([A-Za-zА-Яа-яЁё])`)
 )
 
-const generationCacheVersion = "v6"
+const generationCacheVersion = "v7"
 
 const (
-	pageUnits             = 84.0
-	firstPageUnits        = 74.0
-	minNextPageUnits      = 18.0
-	newSectionStartUnits  = 30.0
+	pageUnits             = 102.0
+	firstPageUnits        = 92.0
+	minNextPageUnits      = 14.0
+	newSectionStartUnits  = 34.0
 	defaultSectionHeading = 2
 )
 
@@ -863,14 +864,14 @@ func renderPreviewHTML(plan manuscriptPlan, images map[string]generatedImage, se
 	pages := paginateManuscriptBlocks(blocks)
 
 	var b strings.Builder
-	b.WriteString(`<!doctype html><html><head><meta charset="utf-8">`)
+	b.WriteString(`<!doctype html><html lang="ru"><head><meta charset="utf-8">`)
 	if baseURL != "" {
 		b.WriteString(`<base href="` + html.EscapeString(strings.TrimRight(baseURL, "/")) + `/">`)
 	}
 	b.WriteString(`<style>`)
 	b.WriteString(fontCSS(settings.FontStyle))
 	b.WriteString(`:root{--paper-url:url("` + paper + `");--ornament-url:url("` + ornament + `");--divider-url:url("` + divider + `");--dropcap-url:url("` + dropcap + `");--dropcap-bg:` + dropcapBg + `;--manuscript-ink:` + ink.Ink + `;--manuscript-faded-ink:` + ink.FadedInk + `;--manuscript-red:` + ink.Red + `;--manuscript-gold:` + ink.Gold + `;}`)
-	b.WriteString(`@page{size:A4;margin:0}html,body{margin:0;min-height:100%}*{box-sizing:border-box}.manuscript-root{--ink:var(--manuscript-ink);--faded-ink:var(--manuscript-faded-ink);--red:var(--manuscript-red);--gold:var(--manuscript-gold);color:var(--ink);min-height:100vh;background:#2c241b;font-family:"Forge Body",Georgia,serif;line-height:1.52}.manuscript-book{display:flex;flex-direction:column;align-items:center;gap:28px;padding:28px 18px}.manuscript-sheet{position:relative;width:min(100%,820px);aspect-ratio:210/297;overflow:hidden;background:radial-gradient(circle at 50% 18%,rgba(255,247,220,.16),transparent 36rem),var(--paper-url) center/100% 100% no-repeat,#e5c68f;box-shadow:0 18px 42px rgba(18,11,5,.34);break-after:page}.manuscript-sheet:last-child{break-after:auto}.manuscript-content{position:relative;z-index:1;height:100%;padding:54px 70px 70px 150px;overflow:hidden}.manuscript-margin-ornament{position:absolute;z-index:1;left:34px;top:86px;width:94px;height:calc(100% - 150px);background:var(--ornament-url) left top/contain no-repeat;pointer-events:none;opacity:.94}.manuscript-title{max-width:620px;margin:0 auto;color:#3a1209;font-family:"Forge Display","Forge Body",Georgia,serif;font-size:50px;line-height:.98;text-align:center}.manuscript-subtitle{max-width:590px;margin:14px auto 0;color:var(--faded-ink);font-size:21px;font-style:italic;text-align:center}.manuscript-title-rule,.manuscript-rule{display:flex;justify-content:center;margin:22px auto}.manuscript-title-rule img{width:min(100%,430px);height:auto;opacity:.78}.manuscript-rule span{display:block;width:min(100%,430px);height:42px;background:var(--divider-url) center/contain no-repeat;font-size:0}.manuscript-heading{margin:0 0 13px;color:var(--red);font-family:"Forge Display","Forge Body",Georgia,serif;font-size:28px;font-variant:small-caps;letter-spacing:0;line-height:1.12;text-align:center;break-after:avoid}.manuscript-heading.level-1{font-size:31px}.manuscript-heading.level-2{font-size:25px}.manuscript-heading.level-3,.manuscript-heading.level-4{font-size:22px}.manuscript-body{font-size:` + fmt.Sprint(fontSize) + `px}.manuscript-body p{margin:0 0 .78em;text-align:justify;orphans:3;widows:3}.manuscript-body strong{color:inherit;font-weight:700;text-shadow:none}.manuscript-body em{font-style:italic}.manuscript-dropcap-letter{float:left;display:inline-grid;width:58px;height:58px;margin:3px 12px 2px 0;padding:0;place-items:center;color:#fff0b7;background:var(--dropcap-url) center/100% 100% no-repeat,var(--dropcap-bg);font-family:"Forge Display","Forge Body",Georgia,serif;font-size:41px;font-style:normal;font-weight:700;line-height:1;text-align:center;text-shadow:0 2px 0 rgba(61,15,11,.65)}.manuscript-body blockquote{margin:1em 0;padding:.55em .9em;color:#503018;border-left:3px solid rgba(122,23,15,.36);background:rgba(255,248,220,.2)}.manuscript-figure{position:relative;margin:20px auto 24px;padding-top:8px;text-align:center;break-inside:avoid}.manuscript-figure img{display:block;width:min(100%,500px);max-height:285px;margin:0 auto;object-fit:contain;border:0;mix-blend-mode:multiply;filter:contrast(.98) saturate(1.04);box-shadow:none}.manuscript-figure.illustration-map img,.manuscript-figure.illustration-chapter-vignette img,.manuscript-figure.illustration-scribal-diagram img{width:min(100%,610px);max-height:255px}.manuscript-figure.illustration-coat-of-arms img,.manuscript-figure.illustration-relic-study img,.manuscript-figure.illustration-bestiary-creature img{width:min(74%,280px);max-height:240px}.manuscript-figure.compact-figure{margin:12px auto 14px;padding-top:2px}.manuscript-figure.compact-figure img{max-height:190px}.manuscript-figure.compact-figure figcaption{margin-top:3px;font-size:12px}.manuscript-figure.illustration-illuminated-miniature img,.manuscript-figure.illustration-marginalia-scene img,.manuscript-figure.illustration-botanical-marginalia img{mix-blend-mode:normal;filter:contrast(.98) saturate(1.08)}.manuscript-figure figcaption{margin-top:5px;color:var(--faded-ink);font-size:13px;font-style:italic}.manuscript-placeholder{width:min(100%,420px);min-height:105px;margin:18px auto 8px;display:grid;place-items:center;background:var(--divider-url) center/contain no-repeat;font-size:0}.fallback{border:1px solid rgba(116,27,19,.22);padding:18px;color:#7b5b2d;background:rgba(255,246,220,.32)}@media print{html,body,.manuscript-root{width:210mm;min-height:297mm;background:transparent}.manuscript-book{display:block;padding:0}.manuscript-sheet{width:210mm;height:297mm;box-shadow:none;page-break-after:always}.manuscript-sheet:last-child{page-break-after:auto}.manuscript-content{padding:14mm 18mm 18mm 39mm}.manuscript-margin-ornament{left:8mm;top:25mm;width:27mm;height:235mm}}`)
+	b.WriteString(`@page{size:A4;margin:0}html,body{margin:0;min-height:100%}*{box-sizing:border-box}.manuscript-root{--ink:var(--manuscript-ink);--faded-ink:var(--manuscript-faded-ink);--red:var(--manuscript-red);--gold:var(--manuscript-gold);color:var(--ink);min-height:100vh;background:#2c241b;font-family:"Forge Body",Georgia,serif;line-height:1.52}.manuscript-book{display:flex;flex-direction:column;align-items:center;gap:28px;padding:28px 18px}.manuscript-sheet{position:relative;width:min(100%,820px);aspect-ratio:210/297;overflow:hidden;background:radial-gradient(circle at 50% 18%,rgba(255,247,220,.16),transparent 36rem),var(--paper-url) center/100% 100% no-repeat,#e5c68f;box-shadow:0 18px 42px rgba(18,11,5,.34);break-after:page}.manuscript-sheet:last-child{break-after:auto}.manuscript-content{position:relative;z-index:1;height:100%;padding:54px 70px 70px 150px;overflow:hidden}.manuscript-margin-ornament{position:absolute;z-index:1;left:34px;top:86px;width:94px;height:calc(100% - 150px);background:var(--ornament-url) left top/contain no-repeat;pointer-events:none;opacity:.94}.manuscript-title{max-width:620px;margin:0 auto;color:#3a1209;font-family:"Forge Display","Forge Body",Georgia,serif;font-size:50px;line-height:.98;text-align:center}.manuscript-subtitle{max-width:590px;margin:14px auto 0;color:var(--faded-ink);font-size:21px;font-style:italic;text-align:center}.manuscript-title-rule,.manuscript-rule{display:flex;justify-content:center;margin:22px auto}.manuscript-title-rule img{width:min(100%,430px);height:auto;opacity:.78}.manuscript-rule span{display:block;width:min(100%,430px);height:42px;background:var(--divider-url) center/contain no-repeat;font-size:0}.manuscript-heading{margin:0 0 13px;color:var(--red);font-family:"Forge Display","Forge Body",Georgia,serif;font-size:28px;font-variant:small-caps;letter-spacing:0;line-height:1.12;text-align:center;break-after:avoid}.manuscript-heading.level-1{font-size:31px}.manuscript-heading.level-2{font-size:25px}.manuscript-heading.level-3,.manuscript-heading.level-4{font-size:22px}.manuscript-body{font-size:` + fmt.Sprint(fontSize) + `px}.manuscript-body p{margin:0 0 .78em;text-align:justify;text-wrap:pretty;hyphens:auto;orphans:3;widows:3}.manuscript-body.split-cont p{margin-bottom:0}.manuscript-body strong{color:inherit;font-weight:700;text-shadow:none}.manuscript-body em{font-style:italic}.manuscript-dropcap-letter{float:left;display:inline-grid;width:58px;height:58px;margin:3px 12px 2px 0;padding:0;place-items:center;color:#fff0b7;background:var(--dropcap-url) center/100% 100% no-repeat,var(--dropcap-bg);font-family:"Forge Display","Forge Body",Georgia,serif;font-size:41px;font-style:normal;font-weight:700;line-height:1;text-align:center;text-shadow:0 2px 0 rgba(61,15,11,.65)}.manuscript-body blockquote{margin:1em 0;padding:.55em .9em;color:#503018;border-left:3px solid rgba(122,23,15,.36);background:rgba(255,248,220,.2)}.manuscript-figure{position:relative;margin:20px auto 24px;padding-top:8px;text-align:center;break-inside:avoid}.manuscript-figure img{display:block;width:min(100%,500px);max-height:285px;margin:0 auto;object-fit:contain;border:0;mix-blend-mode:multiply;filter:contrast(.98) saturate(1.04);box-shadow:none}.manuscript-figure.illustration-map img,.manuscript-figure.illustration-chapter-vignette img,.manuscript-figure.illustration-scribal-diagram img{width:min(100%,610px);max-height:255px}.manuscript-figure.illustration-coat-of-arms img,.manuscript-figure.illustration-relic-study img,.manuscript-figure.illustration-bestiary-creature img{width:min(74%,280px);max-height:240px}.manuscript-figure.compact-figure{margin:12px auto 14px;padding-top:2px}.manuscript-figure.compact-figure img{max-height:190px}.manuscript-figure.compact-figure figcaption{margin-top:3px;font-size:12px}.manuscript-figure.illustration-illuminated-miniature img,.manuscript-figure.illustration-marginalia-scene img,.manuscript-figure.illustration-botanical-marginalia img{mix-blend-mode:normal;filter:contrast(.98) saturate(1.08)}.manuscript-figure figcaption{margin-top:5px;color:var(--faded-ink);font-size:13px;font-style:italic}.manuscript-placeholder{width:min(100%,420px);min-height:105px;margin:18px auto 8px;display:grid;place-items:center;background:var(--divider-url) center/contain no-repeat;font-size:0}.fallback{border:1px solid rgba(116,27,19,.22);padding:18px;color:#7b5b2d;background:rgba(255,246,220,.32)}@media print{html,body,.manuscript-root{width:210mm;min-height:297mm;background:transparent}.manuscript-book{display:block;padding:0}.manuscript-sheet{width:210mm;height:297mm;box-shadow:none;page-break-after:always}.manuscript-sheet:last-child{page-break-after:auto}.manuscript-content{padding:14mm 18mm 18mm 39mm}.manuscript-margin-ornament{left:8mm;top:25mm;width:27mm;height:235mm}}`)
 	b.WriteString(`</style></head><body class="manuscript-root"><article class="manuscript-book">`)
 	for i, pageBlocks := range pages {
 		b.WriteString(`<section class="manuscript-sheet" data-page="` + fmt.Sprint(i+1) + `"><div class="manuscript-margin-ornament" aria-hidden="true"></div><div class="manuscript-content">`)
@@ -928,7 +929,8 @@ func markdownBlocks(markdown string) []markdownBlock {
 func renderInlineMarkdown(value string) string {
 	escaped := html.EscapeString(value)
 	escaped = markdownStrong.ReplaceAllString(escaped, "<strong>$1</strong>")
-	return markdownEmphasis.ReplaceAllString(escaped, "<em>$1</em>")
+	escaped = markdownEmphasis.ReplaceAllString(escaped, "<em>$1</em>")
+	return shortWordBreak.ReplaceAllString(escaped, "$1$2&nbsp;$3")
 }
 
 func manuscriptBlocks(plan manuscriptPlan, images map[string]generatedImage, settings generationSettings) []manuscriptBlock {
@@ -1033,10 +1035,15 @@ func markdownToManuscriptBlocks(markdown string, dropCap bool, settings generati
 				Kind:         "heading",
 			})
 		default:
-			for _, paragraph := range splitLongParagraph(block.Text) {
-				htmlBlock := `<div class="manuscript-body"><p>` + renderInlineMarkdown(paragraph) + `</p></div>`
+			paragraphs := splitLongParagraph(block.Text)
+			for i, paragraph := range paragraphs {
+				className := "manuscript-body"
+				if len(paragraphs) > 1 && i < len(paragraphs)-1 {
+					className += " split-cont"
+				}
+				htmlBlock := `<div class="` + className + `"><p>` + renderInlineMarkdown(paragraph) + `</p></div>`
 				if dropCap && firstParagraph {
-					htmlBlock = renderDropcapBlock(paragraph)
+					htmlBlock = renderDropcapBlock(paragraph, className+" drop-cap")
 				}
 				firstParagraph = false
 				blocks = append(blocks, manuscriptBlock{HTML: htmlBlock, Units: textUnits(paragraph, settings.FontSize), Kind: "text"})
@@ -1048,13 +1055,13 @@ func markdownToManuscriptBlocks(markdown string, dropCap bool, settings generati
 
 func splitLongParagraph(text string) []string {
 	text = strings.TrimSpace(text)
-	if len([]rune(text)) < 260 {
+	if len([]rune(text)) < 560 {
 		return []string{text}
 	}
 	parts := []string{}
 	current := strings.Builder{}
 	for _, token := range strings.Fields(text) {
-		if current.Len()+len(token) > 190 && current.Len() > 0 {
+		if current.Len()+len(token) > 380 && current.Len() > 0 {
 			parts = append(parts, strings.TrimSpace(current.String()))
 			current.Reset()
 		}
@@ -1062,7 +1069,7 @@ func splitLongParagraph(text string) []string {
 			current.WriteByte(' ')
 		}
 		current.WriteString(token)
-		if strings.ContainsAny(token, ".!?。！？»”") && current.Len() > 240 {
+		if strings.ContainsAny(token, ".!?。！？»”") && current.Len() > 360 {
 			parts = append(parts, strings.TrimSpace(current.String()))
 			current.Reset()
 		}
@@ -1073,23 +1080,23 @@ func splitLongParagraph(text string) []string {
 	return parts
 }
 
-func renderDropcapBlock(text string) string {
+func renderDropcapBlock(text string, className string) string {
 	clean := strings.TrimSpace(markdownMarker.ReplaceAllString(text, ""))
 	if clean == "" {
-		return `<div class="manuscript-body"><p></p></div>`
+		return `<div class="` + className + `"><p></p></div>`
 	}
 	runes := []rune(clean)
-	return `<div class="manuscript-body drop-cap"><p><span class="manuscript-dropcap-letter">` +
+	return `<div class="` + className + `"><p><span class="manuscript-dropcap-letter">` +
 		html.EscapeString(string(runes[0])) + `</span>` + html.EscapeString(string(runes[1:])) + `</p></div>`
 }
 
 func textUnits(text string, fontSize int) float64 {
 	normalized := strings.Join(strings.Fields(plainText(text)), " ")
 	size := normalizedFontSize(fontSize)
-	charsPerLine := maxInt(30, 38-(size-16)*2)
-	lineUnits := 5.0 * (float64(size) / 20.0)
+	charsPerLine := maxInt(42, 58-(size-16)*2)
+	lineUnits := 3.65 * (float64(size) / 20.0)
 	lines := maxInt(1, (len([]rune(normalized))+charsPerLine-1)/charsPerLine)
-	return maxFloat(7, float64(lines)*lineUnits+4)
+	return maxFloat(5.5, float64(lines)*lineUnits+3)
 }
 
 func figureBlock(section planSection, images map[string]generatedImage) *manuscriptBlock {

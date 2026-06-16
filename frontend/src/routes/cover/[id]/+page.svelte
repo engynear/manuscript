@@ -153,7 +153,13 @@
 
 				<label class="field">
 					<span>{$t('spine_title')}</span>
-					<input bind:value={spineText} placeholder={book.title} />
+					<textarea
+						bind:value={spineText}
+						rows="3"
+						placeholder={`${book.title}\nТом 3`}
+						spellcheck="false"
+					></textarea>
+					<small>Enter создаёт отдельную строку на корешке.</small>
 				</label>
 
 				<div class="field">
@@ -268,6 +274,25 @@
 		font-size: 16px;
 		color: var(--ink);
 		outline: none;
+	}
+	.field textarea {
+		width: 100%;
+		min-height: 86px;
+		resize: vertical;
+		padding: 11px 14px;
+		border-radius: 9px;
+		border: 1px solid var(--line-strong);
+		background: var(--paper-edge);
+		font-size: 16px;
+		line-height: 1.35;
+		color: var(--ink);
+		outline: none;
+	}
+	.field small {
+		display: block;
+		margin-top: 6px;
+		font-size: 12.5px;
+		color: var(--ink-faint);
 	}
 	.field input[type='color'] {
 		width: 72px;

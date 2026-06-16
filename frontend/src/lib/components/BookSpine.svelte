@@ -14,18 +14,25 @@
 	const sc = $derived(h / 230);
 
 	const spineText = $derived(spineTextFor(book));
+	const spineLines = $derived(
+		spineText
+			.split(/\r?\n/)
+			.map((line) => line.trim())
+			.filter(Boolean)
+	);
+	const lineCount = $derived(Math.max(1, spineLines.length));
+	const longestLine = $derived(spineLines.reduce((max, line) => Math.max(max, line.length), 0));
 	const w = $derived(
-		Math.min(70 * sc, 34 * sc + Math.ceil(spineText.length / 18) * 7 * sc + ((book.pageCount % 5) * 3))
+		Math.min(74 * sc, 34 * sc + Math.max(0, lineCount - 1) * 11 * sc + ((book.pageCount % 5) * 3))
 	);
 	// Shrink the title (and let it wrap to a 2nd column) so the whole thing fits.
 	const titleSize = $derived(
 		(() => {
 			const base = Math.max(9, 12.5 * sc);
 			// usable vertical run for the (rotated) text, in px — allow up to 2 columns
-			const columns = Math.max(1, Math.floor(w / Math.max(10, 12 * sc)));
-			const avail = h * 0.68 * columns;
+			const avail = h * 0.62;
 			// rough advance per character for the display face
-			const fit = avail / Math.max(1, spineText.length * 0.95);
+			const fit = avail / Math.max(1, longestLine * 0.95);
 			return Math.max(6.5, Math.min(base, fit));
 		})()
 	);
@@ -52,7 +59,7 @@
 		style="writing-mode:vertical-rl;transform:rotate(180deg);font-family:var(--font-display);
 			font-weight:600;font-size:{titleSize}px;letter-spacing:.02em;line-height:1.05;text-align:center;
 			text-shadow:0 1px 1px rgba(0,0,0,.45);max-height:72%;max-width:calc(100% - {10 * sc}px);
-			overflow:hidden;overflow-wrap:anywhere;word-break:break-word"
+			overflow:hidden;overflow-wrap:anywhere;word-break:break-word;white-space:pre-line"
 	>
 		{spineText}
 	</div>
