@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import type { BookImage, ManuscriptPlan, ManuscriptSettings } from '$lib/types';
+	import type { Book, BookImage, ManuscriptPlan, ManuscriptSettings } from '$lib/types';
 	import {
 		fontFamilyFor,
 		dropcapBackground,
@@ -20,8 +20,16 @@
 		mode?: 'spread' | 'single';
 		plan?: ManuscriptPlan | null;
 		images?: BookImage[];
+		/** When set, the reader opens on a dedicated cover page. */
+		book?: Book | null;
+		showCover?: boolean;
 	}
-	let { md, settings: s, mode = 'spread', plan = null, images = [] }: Props = $props();
+	let { md, settings: s, mode = 'spread', plan = null, images = [], book = null, showCover = true }: Props = $props();
+
+	const hasCover = $derived(showCover);
+	const coverTitle = $derived(book?.title || plan?.title || '');
+	const coverSubtitle = $derived(book?.subtitle || plan?.subtitle || '');
+	const coverAuthor = $derived(book?.author || '');
 
 	const single = $derived(mode === 'single');
 	const per = $derived(single ? 1 : 2); // pages advanced per turn
@@ -43,7 +51,7 @@
 	const padX = $derived(Math.round(pageW * 0.11));
 	const padTop = $derived(Math.round(pageH * 0.085));
 	const padBot = $derived(Math.round(pageH * 0.07));
-	const ornW = $derived(Math.round(pageW * 0.1));
+	const ornW = $derived(Math.round(pageW * 0.15));
 	const fs = $derived(Math.max(14, Math.round(pageW * 0.044)));
 	const contentH = $derived(pageH - padTop - padBot);
 
@@ -53,7 +61,9 @@
 	// Long paragraphs are split across pages so no text is ever clipped.
 	let measureEl: HTMLDivElement | undefined = $state();
 	let splitEl: HTMLDivElement | undefined = $state(); // measures candidate paragraph slices
-	let pages = $state<PageSeg[][]>([]); // arrays of placements
+	let contentPages = $state<PageSeg[][]>([]); // arrays of placements (content only)
+	// A dedicated cover page is prepended as page 0 when a cover is shown.
+	const pages = $derived<PageSeg[][]>(hasCover ? [[], ...contentPages] : contentPages);
 
 	/** Markup for a paragraph slice, matching the rendered <p> so heights agree. */
 	function pHtml(html: string, drop: boolean): string {
@@ -87,9 +97,10 @@
 				}
 			}
 		);
-		pages = next;
-		if (spread > next.length - 1) {
-			const last = Math.max(0, next.length - 1);
+		contentPages = next;
+		const t = (hasCover ? 1 : 0) + next.length;
+		if (spread > t - 1) {
+			const last = Math.max(0, t - 1);
 			spread = single ? last : last & ~1;
 		}
 	}
@@ -282,6 +293,43 @@
 	{/if}
 {/snippet}
 
+<!-- dedicated cover page: cover art if present, otherwise a centered title page -->
+{#snippet coverFace()}
+	{#if book?.cover?.artUrl}
+		<img
+			src={mediaUrl(book.cover.artUrl)}
+			alt=""
+			style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"
+		/>
+	{:else}
+		<div
+			style="position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:{padTop}px {padX}px;gap:{Math.round(
+				fs * 0.7
+			)}px"
+		>
+			{#if s.titleDivider}
+				<img src={s.titleDivider} alt="" style="height:28px;width:52%;object-fit:contain;opacity:.85" />
+			{/if}
+			<h1 style="font-family:{family};font-size:{Math.round(fs * 2)}px;font-weight:700;color:{ink.red};margin:0;line-height:1.06">
+				{coverTitle}
+			</h1>
+			{#if coverSubtitle}
+				<div style="font-style:italic;font-size:{Math.round(fs * 1.05)}px;color:{ink.fadedInk}">{coverSubtitle}</div>
+			{/if}
+			{#if s.titleDivider}
+				<img src={s.titleDivider} alt="" style="height:24px;width:40%;object-fit:contain;opacity:.7" />
+			{/if}
+			{#if coverAuthor}
+				<div style="margin-top:{Math.round(fs)}px;letter-spacing:.14em;text-transform:uppercase;font-size:{Math.round(
+					fs * 0.78
+				)}px;color:{ink.ink}">
+					{coverAuthor}
+				</div>
+			{/if}
+		</div>
+	{/if}
+{/snippet}
+
 <!-- one page face: paper, gutter shading, ornament, content. side decides the spine edge. -->
 {#snippet face(idx: number, side: 'left' | 'right' | 'single')}
 	<div
@@ -303,13 +351,15 @@
 					rgba(48,24,9,.20) 100%)"
 			></div>
 		{/if}
-		{#if pages[idx]}
+		{#if hasCover && idx === 0}
+			{@render coverFace()}
+		{:else if pages[idx]}
 			{#if s.ornament}
 				<img
 					src={s.ornament}
 					alt=""
 					style="position:absolute;{side === 'right'
-						? `right:${Math.round(padX * 0.3)}px`
+						? `right:${Math.round(padX * 0.3)}px;transform:scaleX(-1)`
 						: `left:${Math.round(padX * 0.3)}px`};top:{padTop}px;height:{contentH}px;width:{ornW -
 						6}px;object-fit:contain;object-position:top;opacity:.95"
 				/>

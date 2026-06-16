@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -262,7 +263,13 @@ func (s *Server) handleGenerateManuscript(w http.ResponseWriter, r *http.Request
 	if _, err := os.Stat(pdfPath); err == nil {
 		send(generationProgress{Type: "progress", Step: "pdf-cache", Message: "PDF loaded from cache", Progress: 94})
 	} else {
-		if err := renderPDF(ctx, pdfPath, previewHTML); err != nil {
+		// Render by navigating Chrome to the served HTML over HTTP so the page and
+		// its assets (paper, ornaments, illuminated drop caps, dividers, fonts,
+		// illustrations) share an origin. A data: URL has an opaque origin and
+		// Chrome's Private Network Access guard blocks its localhost asset fetches
+		// (the "InsecureLocalNetwork" errors), leaving the PDF undecorated.
+		pageURL := strings.TrimRight(publicBaseURL, "/") + strings.TrimRight(s.cfg.MediaBaseURL, "/") + "/generated/" + hash + "/manuscript.html"
+		if err := renderPDF(ctx, pdfPath, pageURL); err != nil {
 			send(generationProgress{Type: "error", Message: "could not create PDF"})
 			return
 		}
@@ -1283,7 +1290,7 @@ func normalizedFontSize(value int) int {
 	return value
 }
 
-func renderPDF(ctx context.Context, path string, htmlDoc string) error {
+func renderPDF(ctx context.Context, path string, pageURL string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -1293,14 +1300,9 @@ func renderPDF(ctx context.Context, path string, htmlDoc string) error {
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("no-sandbox", true),
 		chromedp.Flag("disable-dev-shm-usage", true),
-		// The document is loaded from a data: URL (an opaque/"public" address
-		// space) while its assets live on the backend at localhost (a "local"
-		// address space). Chrome's Private Network Access guard blocks those
-		// fetches (the "InsecureLocalNetwork" CORS errors) so paper, drop caps,
-		// ornaments and fonts never load into the PDF. Disable the guard.
-		// Chrome only honours the last --disable-features flag, so this repeats
-		// chromedp's defaults (site-per-process,Translate,BlinkGenPropertyTrees)
-		// alongside the Private Network Access guards.
+		// The page is served over HTTP from the backend (same origin as its
+		// assets), so no Private Network Access guard applies. Keep the guard
+		// disabled anyway as a belt-and-suspenders measure.
 		chromedp.Flag("disable-features", "site-per-process,Translate,BlinkGenPropertyTrees,BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights,PrivateNetworkAccessRespectPreflightResults"),
 	)
 	if chromeBin := strings.TrimSpace(os.Getenv("CHROME_BIN")); chromeBin != "" {
@@ -1309,18 +1311,28 @@ func renderPDF(ctx context.Context, path string, htmlDoc string) error {
 	allocCtx, cancelAlloc := chromedp.NewExecAllocator(ctx, allocOpts...)
 	defer cancelAlloc()
 
-	printCtx, cancelPrint := chromedp.NewContext(allocCtx)
+	// Surface real chromedp errors but drop the harmless cdproto "could not
+	// unmarshal event" noise from CORS event values it doesn't recognise.
+	printCtx, cancelPrint := chromedp.NewContext(allocCtx, chromedp.WithErrorf(func(format string, args ...interface{}) {
+		msg := fmt.Sprintf(format, args...)
+		if strings.Contains(msg, "InsecureLocalNetwork") || strings.Contains(msg, "could not unmarshal event") {
+			return
+		}
+		log.Printf(format, args...)
+	}))
 	defer cancelPrint()
 
 	printCtx, cancelTimeout := context.WithTimeout(printCtx, 90*time.Second)
 	defer cancelTimeout()
 
 	var pdfBytes []byte
-	dataURL := "data:text/html;base64," + base64.StdEncoding.EncodeToString([]byte(htmlDoc))
 	if err := chromedp.Run(printCtx,
-		chromedp.Navigate(dataURL),
+		chromedp.Navigate(pageURL),
 		chromedp.WaitReady("body", chromedp.ByQuery),
-		chromedp.Sleep(1200*time.Millisecond),
+		// Give webfonts and decoration images (paper, ornaments, drop caps,
+		// dividers, illustrations) time to finish loading — they're served from
+		// the same origin over localhost, so this is fast.
+		chromedp.Sleep(2500*time.Millisecond),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			buf, _, err := page.PrintToPDF().
 				WithPrintBackground(true).

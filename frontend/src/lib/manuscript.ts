@@ -424,10 +424,19 @@ function blocksFromPlan(plan: ManuscriptPlan, images?: BookImage[]): ManuscriptB
 		if (img && sec.illustration?.placement === 'before') {
 			blocks.push({ t: 'illustration', url: img.url, caption: img.caption });
 		}
-		const paras = paragraphs(sec.bodyMarkdown);
-		paras.forEach((p, i) => {
-			blocks.push({ t: 'p', html: renderInline(p), dropCap: sec.dropCap && i === 0 });
-		});
+		// The body may itself contain Markdown heading lines (e.g. a section that
+		// opens with "### ..."). Render those as headings rather than leaking the
+		// "###" markers into prose (and stealing the first letter for a drop cap).
+		let droppedCap = false;
+		for (const block of bodyBlocks(sec.bodyMarkdown)) {
+			if (block.t === 'p') {
+				const dropCap = !!sec.dropCap && !droppedCap;
+				if (dropCap) droppedCap = true;
+				blocks.push({ t: 'p', html: block.html, dropCap });
+			} else {
+				blocks.push(block);
+			}
+		}
 		if (img && sec.illustration?.placement !== 'before') {
 			blocks.push({ t: 'illustration', url: img.url, caption: img.caption });
 		}
@@ -445,12 +454,13 @@ function blocksFromMarkdown(src: string): ManuscriptBlock[] {
 		}
 	};
 	for (const l of (src || '').split('\n')) {
-		if (l.startsWith('## ')) {
+		const heading = /^(#{1,6})\s+(.*)$/.exec(l);
+		if (heading) {
+			// Only a top-level `#` is the manuscript title (h1); every deeper level
+			// (##..######) is a section heading (h2) — otherwise the `###` markers
+			// leak into the prose and the drop cap steals the first letter.
 			flush();
-			blocks.push({ t: 'h2', html: renderInline(l.slice(3)) });
-		} else if (l.startsWith('# ')) {
-			flush();
-			blocks.push({ t: 'h1', html: renderInline(l.slice(2)) });
+			blocks.push({ t: heading[1].length <= 1 ? 'h1' : 'h2', html: renderInline(heading[2].trim()) });
 		} else if (isThematicBreak(l)) {
 			flush();
 		} else if (l.trim() === '') {
@@ -466,12 +476,33 @@ function blocksFromMarkdown(src: string): ManuscriptBlock[] {
 	return blocks;
 }
 
-/** Split a section body into paragraphs (blank-line separated). */
-function paragraphs(body: string): string[] {
-	return (body || '')
-		.split(/\n{2,}/)
-		.map((p) => p.replace(/\n/g, ' ').trim())
-		.filter((p) => p && !isThematicBreak(p));
+/**
+ * Parse a section body into heading/paragraph blocks. Heading lines (`#`..`######`)
+ * become h1/h2 blocks (matching the plan's two-level heading styling); thematic
+ * breaks separate paragraphs; everything else is blank-line-separated prose.
+ */
+function bodyBlocks(body: string): ManuscriptBlock[] {
+	const out: ManuscriptBlock[] = [];
+	let para: string[] = [];
+	const flush = () => {
+		if (para.length) {
+			out.push({ t: 'p', html: renderInline(para.join(' ')) });
+			para = [];
+		}
+	};
+	for (const line of (body || '').split('\n')) {
+		const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+		if (heading) {
+			flush();
+			out.push({ t: heading[1].length <= 1 ? 'h1' : 'h2', html: renderInline(heading[2].trim()) });
+		} else if (isThematicBreak(line) || line.trim() === '') {
+			flush();
+		} else {
+			para.push(line.trim());
+		}
+	}
+	flush();
+	return out;
 }
 
 /** Loads the asset manifest from /static. */

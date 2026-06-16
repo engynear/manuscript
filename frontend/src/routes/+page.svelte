@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
 	import { settings, forgeMarkdown, forgeTab } from '$lib/settings';
-	import { auth, currentUser, books as booksApi, streamNDJSON } from '$lib/api';
+	import { auth, currentUser, books as booksApi, streamNDJSON, mediaUrl } from '$lib/api';
 	import Icon from '$lib/components/Icon.svelte';
 	import ManuscriptPages from '$lib/components/ManuscriptPages.svelte';
 
@@ -351,7 +351,7 @@
 					class="mf-fade"
 					style="display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--line);flex-wrap:wrap"
 				>
-					<a class="mf-btn mf-btn--primary" href={result?.pdfUrl ?? '#'} download>
+					<a class="mf-btn mf-btn--primary" href={result?.pdfUrl ? mediaUrl(result.pdfUrl) : '#'} download>
 						<Icon name="download" size={16} />{$t('download')}
 					</a>
 					<button class="mf-btn" onclick={designCover} disabled={saving}>

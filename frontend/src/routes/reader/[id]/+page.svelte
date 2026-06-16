@@ -121,7 +121,7 @@
 			{:else if book}
 				<div class="mf-fade-up" style="width:100%;height:100%">
 					{#key mode}
-						<BookSpread {md} {plan} {images} {settings} {mode} />
+						<BookSpread {md} {plan} {images} {settings} {mode} {book} />
 					{/key}
 				</div>
 			{/if}

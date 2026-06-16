@@ -3,6 +3,7 @@
 	import type { Book } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import BookCover from '$lib/components/BookCover.svelte';
+	import { mediaUrl } from '$lib/api';
 
 	interface Props {
 		book: Book;
@@ -87,9 +88,10 @@
 			return;
 		}
 		try {
-			const res = await fetch(`/media/generated/${book.contentHash}/manuscript.html`, {
-				credentials: 'include'
-			});
+			// Public media asset served with Access-Control-Allow-Origin: * — a
+			// credentialed request would be rejected (wildcard ACAO + credentials),
+			// so fetch it anonymously.
+			const res = await fetch(mediaUrl(`/media/generated/${book.contentHash}/manuscript.html`));
 			if (!res.ok) throw new Error('Generated manuscript is not available');
 			const source = await res.text();
 			const doc = new DOMParser().parseFromString(source, 'text/html');
