@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
-	import { books as booksApi } from '$lib/api';
+	import { books as booksApi, mediaUrl } from '$lib/api';
 	import { DEFAULT_SETTINGS } from '$lib/settings';
 	import type { Book, ManuscriptSettings } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
@@ -63,7 +63,7 @@
 		</div>
 		<div style="flex:1;display:flex;justify-content:flex-end;align-items:center;gap:10px">
 			{#if book?.contentHash}
-				<a class="reader-btn" href={`/media/generated/${book.contentHash}/manuscript.pdf`} download>
+				<a class="reader-btn" href={mediaUrl(`/media/generated/${book.contentHash}/manuscript.pdf`)} download>
 					<Icon name="download" size={17} />{$t('redownload')}
 				</a>
 			{/if}

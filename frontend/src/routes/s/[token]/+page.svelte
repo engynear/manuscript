@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
-	import { shares } from '$lib/api';
+	import { shares, mediaUrl } from '$lib/api';
 	import { DEFAULT_SETTINGS } from '$lib/settings';
 	import type { Book, ManuscriptSettings, PublicShelf } from '$lib/types';
 	import Monogram from '$lib/components/Monogram.svelte';
@@ -95,7 +95,7 @@
 									{#if data.allowDownloads && book.contentHash}
 										<a
 											class="shared-download"
-											href={`/media/generated/${book.contentHash}/manuscript.pdf`}
+											href={mediaUrl(`/media/generated/${book.contentHash}/manuscript.pdf`)}
 											download
 											title={$t('download')}
 											onclick={(e) => e.stopPropagation()}
@@ -127,7 +127,7 @@
 			</div>
 			<div style="flex:1;display:flex;justify-content:flex-end;gap:10px">
 				{#if data?.allowDownloads && reading.contentHash}
-					<a class="reader-btn" href={`/media/generated/${reading.contentHash}/manuscript.pdf`} download>
+					<a class="reader-btn" href={mediaUrl(`/media/generated/${reading.contentHash}/manuscript.pdf`)} download>
 						<Icon name="download" size={17} />{$t('download')}
 					</a>
 				{/if}

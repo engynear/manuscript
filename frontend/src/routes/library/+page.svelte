@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
-	import { books as booksApi, currentUser, auth } from '$lib/api';
+	import { books as booksApi, currentUser, auth, mediaUrl } from '$lib/api';
 	import type { Book } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import BookCover from '$lib/components/BookCover.svelte';
@@ -116,7 +116,7 @@
 							<button class="qa" title={$t('edit_book')} onclick={() => goto(`/library/${book.id}`)}><Icon name="edit" size={16} /></button>
 							<button class="qa" title={$t('edit_cover')} onclick={() => goto(`/cover/${book.id}`)}><Icon name="image" size={16} /></button>
 							{#if book.contentHash}
-								<a class="qa" title={$t('download')} href={`/media/generated/${book.contentHash}/manuscript.pdf`} download>
+								<a class="qa" title={$t('download')} href={mediaUrl(`/media/generated/${book.contentHash}/manuscript.pdf`)} download>
 									<Icon name="download" size={16} />
 								</a>
 							{/if}

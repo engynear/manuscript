@@ -109,6 +109,10 @@ var (
 	markdownEmphasis = regexp.MustCompile(`\*([\s\S]+?)\*`)
 	markdownMarker   = regexp.MustCompile(`[*_` + "`" + `]+`)
 	markdownHeading  = regexp.MustCompile(`^(#{1,6})\s+(.+)$`)
+	// Leading heading markers that slipped into body text (e.g. "###Полное"
+	// with no space, which markdownHeading does not match) — strip so the
+	// hashes don't leak into the rendered paragraph / drop cap.
+	leadingHeadingMarker = regexp.MustCompile(`^\s*#{1,6}\s*`)
 	shortWordBreak   = regexp.MustCompile(`(^|[\s(«"“])([A-Za-zА-Яа-яЁё]{1,2})\s+([A-Za-zА-Яа-яЁё])`)
 )
 
@@ -1036,7 +1040,7 @@ func markdownToManuscriptBlocks(markdown string, dropCap bool, settings generati
 				Kind:         "heading",
 			})
 		default:
-			paragraphs := splitLongParagraph(block.Text)
+			paragraphs := splitLongParagraph(leadingHeadingMarker.ReplaceAllString(block.Text, ""))
 			for i, paragraph := range paragraphs {
 				className := "manuscript-body"
 				if len(paragraphs) > 1 && i < len(paragraphs)-1 {
