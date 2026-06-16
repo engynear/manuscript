@@ -12,7 +12,7 @@
 	}
 	let { md, settings: s, mode = 'spread' }: Props = $props();
 
-	type Block = { t: 'h1' | 'h2' | 'p'; text: string };
+	type Block = { t: 'h1' | 'h2' | 'p' | 'hr'; text: string };
 
 	const single = $derived(mode === 'single');
 	const per = $derived(single ? 1 : 2); // pages advanced per turn
@@ -34,7 +34,7 @@
 	const padX = $derived(Math.round(pageW * 0.11));
 	const padTop = $derived(Math.round(pageH * 0.085));
 	const padBot = $derived(Math.round(pageH * 0.07));
-	const ornW = $derived(Math.round(pageW * 0.1));
+	const ornW = $derived(Math.round(pageW * 0.115));
 	const fs = $derived(Math.max(14, Math.round(pageW * 0.044)));
 	const contentH = $derived(pageH - padTop - padBot);
 
@@ -48,13 +48,17 @@
 			}
 		};
 		for (const l of (src || '').split('\n')) {
-			if (l.startsWith('## ')) {
+			const trimmed = l.trim();
+			if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+				flush();
+				blocks.push({ t: 'hr', text: '' });
+			} else if (l.startsWith('## ')) {
 				flush();
 				blocks.push({ t: 'h2', text: l.slice(3) });
 			} else if (l.startsWith('# ')) {
 				flush();
 				blocks.push({ t: 'h1', text: l.slice(2) });
-			} else if (l.trim() === '') {
+			} else if (trimmed === '') {
 				flush();
 			} else {
 				para.push(l);
@@ -62,6 +66,26 @@
 		}
 		flush();
 		return blocks;
+	}
+
+	function escapeHtml(value: string): string {
+		return value
+			.replaceAll('&', '&amp;')
+			.replaceAll('<', '&lt;')
+			.replaceAll('>', '&gt;')
+			.replaceAll('"', '&quot;')
+			.replaceAll("'", '&#39;');
+	}
+
+	function inlineMarkdown(value: string): string {
+		return escapeHtml(value)
+			.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+			.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+	}
+
+	function dropcapText(value: string): { letter: string; rest: string } {
+		const clean = value.replace(/[*_`]+/g, '').trimStart();
+		return { letter: clean.charAt(0), rest: clean.slice(1) };
 	}
 
 	const blocks = $derived(parse(md));
@@ -238,7 +262,14 @@
 		<h2 style="text-align:center;margin:0 0 .6em;font-size:1.35em;font-weight:600;color:{ink.red};letter-spacing:.01em">
 			{b.text}
 		</h2>
+	{:else if b.t === 'hr'}
+		{#if s.divider}
+			<img src={s.divider} alt="" style="display:block;margin:1em auto;height:28px;width:50%;object-fit:contain" />
+		{:else}
+			<hr style="border:none;border-top:1px solid color-mix(in srgb,{ink.red} 42%,transparent);margin:1.2em auto;width:54%" />
+		{/if}
 	{:else if isFirstPara && s.dropcap}
+		{@const dc = dropcapText(b.text)}
 		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">
 			<span
 				style="position:relative;float:left;display:grid;place-items:center;overflow:hidden;width:60px;height:60px;margin:.05em .35em 0 0;background-color:{dropcapBackground(
@@ -246,11 +277,11 @@
 				)};color:#fff4d6;font-weight:700;font-size:40px;line-height:1"
 			>
 				<img src={s.dropcap} alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
-				<span style="position:relative;z-index:1">{b.text.charAt(0)}</span>
-			</span>{b.text.slice(1)}
+				<span style="position:relative;z-index:1">{dc.letter}</span>
+			</span>{dc.rest}
 		</p>
 	{:else}
-		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">{b.text}</p>
+		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">{@html inlineMarkdown(b.text)}</p>
 	{/if}
 {/snippet}
 
@@ -258,7 +289,7 @@
 {#snippet face(idx: number, side: 'left' | 'right' | 'single')}
 	<div
 		style="position:absolute;inset:0;overflow:hidden;
-			background-image:url({s.paper});background-size:cover;background-position:center;
+			background-image:url({s.paper});background-size:100% 100%;background-position:center;
 			font-family:{family};color:{ink.ink};font-size:{fs}px;line-height:1.7"
 	>
 		<!-- ambient page sheen -->
@@ -282,8 +313,7 @@
 					alt=""
 					style="position:absolute;{side === 'right'
 						? `right:${Math.round(padX * 0.3)}px`
-						: `left:${Math.round(padX * 0.3)}px`};top:{padTop}px;height:{contentH}px;width:{ornW -
-						6}px;object-fit:contain;object-position:top;opacity:.95"
+						: `left:${Math.round(padX * 0.3)}px`};top:{padTop}px;height:{contentH}px;width:{ornW}px;object-fit:contain;object-position:top;opacity:.95"
 				/>
 			{/if}
 			<div

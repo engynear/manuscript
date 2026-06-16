@@ -167,7 +167,7 @@
 					<textarea
 						bind:value={$forgeMarkdown}
 						spellcheck="false"
-						style="flex:1;border:none;outline:none;resize:vertical;min-height:300px;padding:14px;font-family:var(--font-mono);font-size:13.5px;line-height:1.6;color:var(--ink);background:transparent"
+						style="flex:1;border:none;outline:none;resize:none;height:360px;max-height:46vh;overflow:auto;padding:14px;font-family:var(--font-mono);font-size:13.5px;line-height:1.6;color:var(--ink);background:transparent"
 					></textarea>
 				</div>
 			{:else}

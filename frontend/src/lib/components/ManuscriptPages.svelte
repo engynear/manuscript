@@ -17,10 +17,11 @@
 	// A4 proportion: height = width * √2.
 	const pageW = $derived(width);
 	const pageH = $derived(Math.round(width * 1.41421));
-	const padX = 46;
-	const padTop = 52;
-	const padBot = 46;
-	const ornW = 46;
+	const padX = $derived(Math.round(pageW * 0.085));
+	const padTop = $derived(Math.round(pageH * 0.085));
+	const padBot = $derived(Math.round(pageH * 0.07));
+	const ornW = $derived(Math.round(pageW * 0.115));
+	const ornLeft = $derived(Math.round(pageW * 0.04));
 	const contentH = $derived(pageH - padTop - padBot);
 
 	function parse(src: string): Block[] {
@@ -66,6 +67,11 @@
 		return escapeHtml(value)
 			.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 			.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+	}
+
+	function dropcapText(value: string): { letter: string; rest: string } {
+		const clean = value.replace(/[*_`]+/g, '').trimStart();
+		return { letter: clean.charAt(0), rest: clean.slice(1) };
 	}
 
 	const blocks = $derived(parse(md));
@@ -134,6 +140,7 @@
 			<hr style="border:none;border-top:1px solid color-mix(in srgb,{ink.red} 42%,transparent);margin:1.2em auto;width:54%" />
 		{/if}
 	{:else if isFirstPara && s.dropcap}
+		{@const dc = dropcapText(b.text)}
 		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">
 			<span
 				style="position:relative;float:left;display:grid;place-items:center;overflow:hidden;width:60px;height:60px;margin:.05em .35em 0 0;background-color:{dropcapBackground(
@@ -141,8 +148,8 @@
 				)};color:#fff4d6;font-weight:700;font-size:40px;line-height:1"
 			>
 				<img src={s.dropcap} alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
-				<span style="position:relative;z-index:1">{b.text.charAt(0)}</span>
-			</span>{@html inlineMarkdown(b.text.slice(1))}
+				<span style="position:relative;z-index:1">{dc.letter}</span>
+			</span>{dc.rest}
 		</p>
 	{:else}
 		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">{@html inlineMarkdown(b.text)}</p>
@@ -154,7 +161,7 @@
 	bind:this={measureEl}
 	aria-hidden="true"
 	style="position:absolute;left:-99999px;top:0;visibility:hidden;width:{pageW -
-		padX -
+		padX * 2 -
 		ornW}px;font-family:{family};font-size:17px;line-height:1.7;color:{ink.ink}"
 >
 	{#each blocks as b, i}
@@ -178,8 +185,7 @@
 				<img
 					src={s.ornament}
 					alt=""
-					style="position:absolute;left:18px;top:{padTop}px;height:{contentH}px;width:{ornW -
-						14}px;object-fit:contain;object-position:top;opacity:.95"
+					style="position:absolute;left:{ornLeft}px;top:{padTop}px;height:{contentH}px;width:{ornW}px;object-fit:contain;object-position:top;opacity:.95"
 				/>
 			{/if}
 			<div

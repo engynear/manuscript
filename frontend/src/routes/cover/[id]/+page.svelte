@@ -48,6 +48,12 @@
 		uploadedArtName = '';
 	}
 
+	function clearArt() {
+		artUrl = '';
+		artUrlInput = '';
+		uploadedArtName = '';
+	}
+
 	async function onFile(e: Event) {
 		const input = e.target as HTMLInputElement;
 		const file = input.files?.[0];
@@ -167,25 +173,40 @@
 					</div>
 				</div>
 
-				<label class="field">
-					<span>{`${$t('art_source')} URL`}</span>
-					<input value={artUrlInput} placeholder="https://..." oninput={(e) => onArtUrlInput(e.currentTarget.value)} />
-				</label>
-
-				<label class="upload">
-					<Icon name="upload" size={22} />
-					<div>
-						<strong>{$t('t_upload')}</strong>
-						<p>{$t('upload_hint')}</p>
+				<div class="art-panel">
+					<div class="art-head">
+						<span>{$t('art_source')}</span>
+						{#if artUrl}
+							<button type="button" class="art-clear" onclick={clearArt}>
+								<Icon name="close" size={14} />{$t('reset')}
+							</button>
+						{/if}
 					</div>
-					<input type="file" accept="image/png,image/jpeg,image/webp" onchange={onFile} />
-				</label>
 
-				{#if uploadedArtName}
-					<div class="uploaded-note">
-						<Icon name="image" size={16} />{uploadedArtName}
-					</div>
-				{/if}
+					{#if artUrl}
+						<div class="art-current">
+							<img src={artUrl} alt="" />
+							<div>
+								<strong>{uploadedArtName ? $t('uploaded_image') : `${$t('art_source')} URL`}</strong>
+								<p>{uploadedArtName || artUrlInput}</p>
+							</div>
+						</div>
+					{/if}
+
+					<label class="field art-url">
+						<span>{`${$t('art_source')} URL`}</span>
+						<input value={artUrlInput} placeholder="https://..." oninput={(e) => onArtUrlInput(e.currentTarget.value)} />
+					</label>
+
+					<label class="upload">
+						<Icon name="upload" size={22} />
+						<div>
+							<strong>{$t('t_upload')}</strong>
+							<p>{$t('upload_hint')}</p>
+						</div>
+						<input type="file" accept="image/png,image/jpeg,image/webp" onchange={onFile} />
+					</label>
+				</div>
 
 				<label class="field">
 					<span>{$t('cover_text_color')}</span>
@@ -196,12 +217,6 @@
 					<input type="checkbox" bind:checked={hideTitle} />
 					<span>{$t('cover_hide_title')}</span>
 				</label>
-
-				{#if artUrl}
-					<button class="mf-btn mf-btn--ghost" onclick={() => ((artUrl = ''), (artUrlInput = ''), (uploadedArtName = ''))}>
-						<Icon name="close" size={16} />{$t('reset')}
-					</button>
-				{/if}
 
 				{#if error}<p class="err">{error}</p>{/if}
 			</section>
@@ -259,14 +274,6 @@
 		padding: 4px;
 		cursor: pointer;
 	}
-	.uploaded-note {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		margin: -4px 0 16px;
-		color: var(--ink-soft);
-		font-size: 13px;
-	}
 	.check-field {
 		display: flex;
 		align-items: center;
@@ -297,6 +304,70 @@
 	.sw.on {
 		border-color: var(--ink);
 		box-shadow: 0 0 0 2px var(--gilt), inset 2px 0 4px rgba(0, 0, 0, 0.3);
+	}
+	.art-panel {
+		margin: 4px 0 18px;
+		padding: 14px;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: color-mix(in srgb, var(--paper-edge) 72%, white);
+	}
+	.art-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 12px;
+	}
+	.art-head > span {
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-soft);
+	}
+	.art-clear {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		border: none;
+		background: transparent;
+		color: var(--oxblood);
+		font: 700 13px/1 var(--font-chrome);
+		cursor: pointer;
+	}
+	.art-current {
+		display: grid;
+		grid-template-columns: 72px minmax(0, 1fr);
+		gap: 12px;
+		align-items: center;
+		margin-bottom: 14px;
+		padding: 10px;
+		border-radius: 8px;
+		background: rgba(255, 255, 255, 0.42);
+		border: 1px solid var(--line);
+	}
+	.art-current img {
+		width: 72px;
+		height: 96px;
+		border-radius: 5px;
+		object-fit: cover;
+		box-shadow: 0 6px 16px rgba(40, 28, 14, 0.18);
+	}
+	.art-current strong {
+		display: block;
+		font-size: 14px;
+	}
+	.art-current p {
+		margin: 4px 0 0;
+		font-size: 12.5px;
+		color: var(--ink-faint);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.art-url {
+		margin-bottom: 12px;
 	}
 	.upload {
 		display: flex;
