@@ -85,8 +85,14 @@ type generatedImage struct {
 	Failed    bool
 }
 
-var nonSlugChars = regexp.MustCompile(`[^a-z0-9]+`)
-const generationCacheVersion = "v2"
+var (
+	nonSlugChars    = regexp.MustCompile(`[^a-z0-9]+`)
+	markdownRule    = regexp.MustCompile(`^(-{3,}|\*{3,}|_{3,})$`)
+	markdownStrong  = regexp.MustCompile(`\*\*([^*]+)\*\*`)
+	markdownEmphasis = regexp.MustCompile(`\*([^*]+)\*`)
+)
+
+const generationCacheVersion = "v3"
 
 func (s *Server) handleGenerateManuscript(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.requireUser(w, r); !ok {
@@ -679,7 +685,7 @@ func renderPreviewHTML(plan manuscriptPlan, images map[string]generatedImage, se
 	}
 	b.WriteString(`<style>`)
 	b.WriteString(fontCSS(settings.FontStyle))
-	b.WriteString(`@page{size:A4;margin:0}html,body{margin:0}body{background:#2b2118;color:#2d1c0f;font-family:"Forge Body",Georgia,serif}.wrap{display:grid;gap:24px;padding:24px}.page{position:relative;box-sizing:border-box;width:min(760px,calc(100vw - 48px));min-height:1050px;margin:0 auto;padding:72px 76px 72px 126px;background:#ead8ad;background-image:url("` + paper + `");background-size:cover;box-shadow:0 18px 60px rgba(0,0,0,.42);overflow:hidden}.orn{position:absolute;left:28px;top:72px;bottom:72px;width:56px;object-fit:contain;object-position:top}h1,h2{text-align:center;color:#741b13;line-height:1.15;break-after:avoid;font-family:"Forge Display","Forge Body",Georgia,serif}h1{font-size:42px;margin:0 0 10px}h2{font-size:28px;margin:34px 0 14px}p{font-size:18px;line-height:1.72;text-align:justify}.divider{display:block;width:58%;height:34px;margin:12px auto 20px;object-fit:contain}.figure{margin:30px auto;text-align:center;break-inside:avoid}.figure img{display:block;width:auto;max-width:min(92%,560px);max-height:none;margin:0 auto;object-fit:contain}.caption{margin-top:10px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#7b5b2d}.fallback{border:1px solid rgba(116,27,19,.22);padding:18px;color:#7b5b2d;background:rgba(255,246,220,.32)}@media print{body{background:#fff}.wrap{display:block;padding:0}.page{width:210mm;min-height:297mm;margin:0;box-shadow:none;border-radius:0;break-after:page}.figure img{max-width:145mm}}`)
+	b.WriteString(`@page{size:A4;margin:0}html,body{margin:0}body{background:#2b2118;color:#2d1c0f;font-family:"Forge Body",Georgia,serif}.wrap{display:grid;place-items:start center;gap:24px;padding:24px;box-sizing:border-box}.page{position:relative;box-sizing:border-box;width:min(760px,100%);min-height:1050px;margin:0 auto;padding:72px 76px 72px 126px;background:#ead8ad;background-image:url("` + paper + `");background-size:100% auto;background-position:top center;background-repeat:repeat-y;box-shadow:0 18px 60px rgba(0,0,0,.42);overflow:hidden}.orn{position:absolute;left:28px;top:72px;bottom:72px;width:56px;object-fit:contain;object-position:top}h1,h2{text-align:center;color:#741b13;line-height:1.15;break-after:avoid;font-family:"Forge Display","Forge Body",Georgia,serif}h1{font-size:42px;margin:0 0 10px}h2{font-size:28px;margin:34px 0 14px}p{font-size:18px;line-height:1.72;text-align:justify}strong{font-weight:700}em{font-style:italic}.divider{display:block;width:58%;height:34px;margin:12px auto 20px;object-fit:contain}.rule{display:block;width:52%;height:30px;margin:22px auto;object-fit:contain}.plain-rule{border:none;border-top:1px solid rgba(116,27,19,.35);margin:26px auto;width:52%}.figure{margin:30px auto;text-align:center;break-inside:avoid}.figure img{display:block;width:auto;max-width:min(92%,560px);max-height:520px;margin:0 auto;object-fit:contain}.caption{margin-top:10px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#7b5b2d}.fallback{border:1px solid rgba(116,27,19,.22);padding:18px;color:#7b5b2d;background:rgba(255,246,220,.32)}@media print{body{background:#fff}.wrap{display:block;padding:0}.page{width:210mm;min-height:297mm;margin:0;box-shadow:none;border-radius:0;break-after:page;background-size:100% auto;background-repeat:repeat-y}.figure img{max-width:145mm;max-height:110mm}}`)
 	b.WriteString(`</style></head><body><div class="wrap">`)
 	b.WriteString(`<section class="page">`)
 	if ornament != "" {
@@ -696,8 +702,16 @@ func renderPreviewHTML(plan manuscriptPlan, images map[string]generatedImage, se
 		if i > 0 {
 			b.WriteString(`<h2>` + html.EscapeString(section.DisplayHeading) + `</h2>`)
 		}
-		for _, p := range markdownParagraphs(section.BodyMarkdown) {
-			b.WriteString(`<p>` + html.EscapeString(p) + `</p>`)
+		for _, block := range markdownBlocks(section.BodyMarkdown) {
+			if block.Kind == "hr" {
+				if divider != "" {
+					b.WriteString(`<img class="rule" src="` + divider + `" alt="">`)
+				} else {
+					b.WriteString(`<hr class="plain-rule">`)
+				}
+				continue
+			}
+			b.WriteString(`<p>` + renderInlineMarkdown(block.Text) + `</p>`)
 		}
 		if section.Illustration != nil {
 			img := images[section.ID]
@@ -714,13 +728,18 @@ func renderPreviewHTML(plan manuscriptPlan, images map[string]generatedImage, se
 	return b.String()
 }
 
-func markdownParagraphs(markdown string) []string {
+type markdownBlock struct {
+	Kind string
+	Text string
+}
+
+func markdownBlocks(markdown string) []markdownBlock {
 	parts := strings.Split(markdown, "\n")
-	out := []string{}
+	out := []markdownBlock{}
 	current := []string{}
 	flush := func() {
 		if len(current) > 0 {
-			out = append(out, strings.Join(current, " "))
+			out = append(out, markdownBlock{Kind: "p", Text: strings.Join(current, " ")})
 			current = []string{}
 		}
 	}
@@ -730,6 +749,11 @@ func markdownParagraphs(markdown string) []string {
 			flush()
 			continue
 		}
+		if markdownRule.MatchString(line) {
+			flush()
+			out = append(out, markdownBlock{Kind: "hr"})
+			continue
+		}
 		if strings.HasPrefix(line, "#") {
 			continue
 		}
@@ -737,6 +761,12 @@ func markdownParagraphs(markdown string) []string {
 	}
 	flush()
 	return out
+}
+
+func renderInlineMarkdown(value string) string {
+	escaped := html.EscapeString(value)
+	escaped = markdownStrong.ReplaceAllString(escaped, "<strong>$1</strong>")
+	return markdownEmphasis.ReplaceAllString(escaped, "<em>$1</em>")
 }
 
 func renderPDF(ctx context.Context, path string, htmlDoc string) error {

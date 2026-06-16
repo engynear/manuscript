@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
-	import { settings, SAMPLE_MD } from '$lib/settings';
+	import { settings, forgeMarkdown, forgeTab } from '$lib/settings';
 	import { auth, currentUser, books as booksApi, streamNDJSON } from '$lib/api';
 	import Icon from '$lib/components/Icon.svelte';
 	import ManuscriptPages from '$lib/components/ManuscriptPages.svelte';
@@ -15,15 +15,13 @@
 		imageFailures: number;
 	};
 
-	let md = $state(SAMPLE_MD);
-	let tab = $state<'md' | 'upload'>('md');
 	let phase = $state<'empty' | 'forging' | 'done'>('empty');
 	let pct = $state(0);
 	let progressMessage = $state('');
 	let progressLog = $state<string[]>([]);
 	let result = $state<GenerateResult | null>(null);
 	let error = $state('');
-	const lineCount = $derived(md.split('\n').length);
+	const lineCount = $derived($forgeMarkdown.split('\n').length);
 
 	async function generate() {
 		const user = $currentUser ?? (await auth.me());
@@ -38,7 +36,7 @@
 		result = null;
 		error = '';
 		try {
-			await streamNDJSON('/api/generate', { markdown: md, settings: $settings }, (event) => {
+			await streamNDJSON('/api/generate', { markdown: $forgeMarkdown, settings: $settings }, (event) => {
 				if (typeof event.progress === 'number') pct = event.progress;
 				if (event.message) {
 					progressMessage = event.message;
@@ -66,8 +64,8 @@
 		const input = e.target as HTMLInputElement;
 		const f = input.files?.[0];
 		if (f) {
-			md = await f.text();
-			tab = 'md';
+			$forgeMarkdown = await f.text();
+			$forgeTab = 'md';
 		}
 	}
 
@@ -86,12 +84,12 @@
 		saving = true;
 		try {
 			const book = await booksApi.create({
-				title: result?.title || titleFromMd(md),
+				title: result?.title || titleFromMd($forgeMarkdown),
 				author: $currentUser.displayName || '',
-				sourceMarkdown: md,
+				sourceMarkdown: $forgeMarkdown,
 				contentHash: result?.hash ?? '',
 				settings: $settings,
-				pageCount: md.split(/\n#{1,2}\s/).length
+				pageCount: $forgeMarkdown.split(/\n#{1,2}\s/).length
 			});
 			goto('/library');
 			return book.id;
@@ -108,12 +106,12 @@
 		saving = true;
 		try {
 			const book = await booksApi.create({
-				title: result?.title || titleFromMd(md),
+				title: result?.title || titleFromMd($forgeMarkdown),
 				author: $currentUser.displayName || '',
-				sourceMarkdown: md,
+				sourceMarkdown: $forgeMarkdown,
 				contentHash: result?.hash ?? '',
 				settings: $settings,
-				pageCount: md.split(/\n#{1,2}\s/).length
+				pageCount: $forgeMarkdown.split(/\n#{1,2}\s/).length
 			});
 			goto(`/cover/${book.id}`);
 		} finally {
@@ -146,15 +144,15 @@
 			<div style="display:flex;gap:6px;padding:12px 16px 0">
 				{#each [['md', 'tab_md'], ['upload', 'tab_upload']] as [k, l]}
 					<button
-						onclick={() => (tab = k as 'md' | 'upload')}
+						onclick={() => ($forgeTab = k as 'md' | 'upload')}
 						style="border:none;padding:7px 13px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;
-							background:{tab === k ? 'var(--paper-deep)' : 'transparent'};
-							color:{tab === k ? 'var(--ink)' : 'var(--ink-faint)'}">{$t(l)}</button
+							background:{$forgeTab === k ? 'var(--paper-deep)' : 'transparent'};
+							color:{$forgeTab === k ? 'var(--ink)' : 'var(--ink-faint)'}">{$t(l)}</button
 					>
 				{/each}
 			</div>
 
-			{#if tab === 'md'}
+			{#if $forgeTab === 'md'}
 				<div
 					style="display:flex;margin:16px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper-edge)"
 				>
@@ -167,7 +165,7 @@
 						{/each}
 					</div>
 					<textarea
-						bind:value={md}
+						bind:value={$forgeMarkdown}
 						spellcheck="false"
 						style="flex:1;border:none;outline:none;resize:vertical;min-height:300px;padding:14px;font-family:var(--font-mono);font-size:13.5px;line-height:1.6;color:var(--ink);background:transparent"
 					></textarea>
@@ -184,7 +182,7 @@
 			{/if}
 
 			<div style="display:flex;align-items:center;gap:12px;padding:0 18px 18px">
-				<span class="mf-chip">{md.length} {$t('chars')}</span>
+				<span class="mf-chip">{$forgeMarkdown.length} {$t('chars')}</span>
 				<span style="font-size:13px;color:var(--ink-faint)">{$t('supports_md')}</span>
 				<div style="flex:1"></div>
 				<button class="mf-btn" onclick={() => goto('/settings')}>
@@ -257,18 +255,18 @@
 					<iframe
 						title="Manuscript preview"
 						srcdoc={result.previewHtml}
-						style="display:block;width:100%;min-height:680px;border:0;background:#2b2118;border-radius:8px"
+						style="display:block;width:100%;max-width:100%;box-sizing:border-box;min-height:680px;border:0;background:#2b2118;border-radius:8px"
 					></iframe>
 				{:else}
 					<div class="mf-fade-up">
-						<ManuscriptPages {md} settings={$settings} width={480} />
+						<ManuscriptPages md={$forgeMarkdown} settings={$settings} width={480} />
 					</div>
 				{/if}
 
 				{#if phase === 'forging'}
 					<div
 						class="mf-fade"
-						style="position:absolute;inset:0;background:rgba(243,234,212,.85);backdrop-filter:blur(3px);display:grid;place-items:center;z-index:5"
+						style="position:absolute;inset:0;background:rgba(243,234,212,.85);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;padding-top:46px;z-index:5"
 					>
 						<div style="width:min(340px,80%);text-align:center">
 							<div

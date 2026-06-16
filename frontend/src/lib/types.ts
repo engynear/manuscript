@@ -21,6 +21,8 @@ export interface Cover {
 	palette?: Palette;
 	spineText?: string;
 	artUrl?: string | null;
+	titleColor?: string;
+	hideTitle?: boolean;
 }
 
 export type FontStyle =

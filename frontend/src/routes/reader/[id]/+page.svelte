@@ -55,7 +55,7 @@
 			<div style="font-family:var(--font-display);font-size:16px">{book?.title ?? ''}</div>
 			<div style="font-size:12px;opacity:.7">{book?.author ?? ''}</div>
 		</div>
-		<div style="flex:1;display:flex;justify-content:flex-end">
+		<div style="flex:1;display:flex;justify-content:flex-end;align-items:center;gap:10px">
 			{#if book?.contentHash}
 				<a class="reader-btn" href={`/media/generated/${book.contentHash}/manuscript.pdf`} download>
 					<Icon name="download" size={17} />{$t('redownload')}

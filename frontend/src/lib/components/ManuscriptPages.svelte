@@ -9,7 +9,7 @@
 	}
 	let { md, settings: s, width = 500 }: Props = $props();
 
-	type Block = { t: 'h1' | 'h2' | 'p'; text: string };
+	type Block = { t: 'h1' | 'h2' | 'p' | 'hr'; text: string };
 
 	const family = $derived(fontFamilyFor(s.fontStyle));
 	const ink = $derived(inkThemeForPaper(s.paper));
@@ -33,13 +33,17 @@
 			}
 		};
 		for (const l of (src || '').split('\n')) {
-			if (l.startsWith('## ')) {
+			const trimmed = l.trim();
+			if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+				flush();
+				blocks.push({ t: 'hr', text: '' });
+			} else if (l.startsWith('## ')) {
 				flush();
 				blocks.push({ t: 'h2', text: l.slice(3) });
 			} else if (l.startsWith('# ')) {
 				flush();
 				blocks.push({ t: 'h1', text: l.slice(2) });
-			} else if (l.trim() === '') {
+			} else if (trimmed === '') {
 				flush();
 			} else {
 				para.push(l);
@@ -47,6 +51,21 @@
 		}
 		flush();
 		return blocks;
+	}
+
+	function escapeHtml(value: string): string {
+		return value
+			.replaceAll('&', '&amp;')
+			.replaceAll('<', '&lt;')
+			.replaceAll('>', '&gt;')
+			.replaceAll('"', '&quot;')
+			.replaceAll("'", '&#39;');
+	}
+
+	function inlineMarkdown(value: string): string {
+		return escapeHtml(value)
+			.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+			.replace(/\*([^*]+)\*/g, '<em>$1</em>');
 	}
 
 	const blocks = $derived(parse(md));
@@ -108,6 +127,12 @@
 		<h2 style="text-align:center;margin:0 0 .6em;font-size:1.35em;font-weight:600;color:{ink.red};letter-spacing:.01em">
 			{b.text}
 		</h2>
+	{:else if b.t === 'hr'}
+		{#if s.divider}
+			<img src={s.divider} alt="" style="display:block;margin:1em auto;height:28px;width:50%;object-fit:contain" />
+		{:else}
+			<hr style="border:none;border-top:1px solid color-mix(in srgb,{ink.red} 42%,transparent);margin:1.2em auto;width:54%" />
+		{/if}
 	{:else if isFirstPara && s.dropcap}
 		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">
 			<span
@@ -117,10 +142,10 @@
 			>
 				<img src={s.dropcap} alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
 				<span style="position:relative;z-index:1">{b.text.charAt(0)}</span>
-			</span>{b.text.slice(1)}
+			</span>{@html inlineMarkdown(b.text.slice(1))}
 		</p>
 	{:else}
-		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">{b.text}</p>
+		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">{@html inlineMarkdown(b.text)}</p>
 	{/if}
 {/snippet}
 
@@ -142,7 +167,7 @@
 	{#each pages as pageIdx}
 		<div
 			style="position:relative;overflow:hidden;flex:0 0 auto;width:{pageW}px;height:{pageH}px;
-				background-image:url({s.paper});background-size:cover;background-position:center;
+				background-image:url({s.paper});background-size:100% auto;background-position:top center;background-repeat:repeat-y;
 				font-family:{family};color:{ink.ink};font-size:17px;line-height:1.7;
 				box-shadow:var(--shadow-lg);border-radius:3px"
 		>

@@ -8,6 +8,7 @@
 	import type { Book, Palette } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import BookCover from '$lib/components/BookCover.svelte';
+	import BookSpine from '$lib/components/BookSpine.svelte';
 
 	let book = $state<Book | null>(null);
 	let error = $state('');
@@ -17,10 +18,16 @@
 	let palette = $state<Palette>(PALETTES[0]);
 	let spineText = $state('');
 	let artUrl = $state('');
+	let artUrlInput = $state('');
+	let uploadedArtName = $state('');
+	let author = $state('');
+	let titleColor = $state('#f2ddb2');
+	let hideTitle = $state(false);
 
 	const preview = $derived<Book>({
 		...(book as Book),
-		cover: { palette, spineText, artUrl: artUrl.trim() || null }
+		author,
+		cover: { palette, spineText, artUrl: artUrl.trim() || null, titleColor, hideTitle }
 	});
 
 	function load(b: Book) {
@@ -28,6 +35,17 @@
 		palette = b.cover?.palette ?? paletteFor(b);
 		spineText = b.cover?.spineText ?? b.title;
 		artUrl = b.cover?.artUrl ?? '';
+		artUrlInput = artUrl.startsWith('data:') ? '' : artUrl;
+		uploadedArtName = artUrl.startsWith('data:') ? $t('uploaded_image') : '';
+		author = b.author;
+		titleColor = b.cover?.titleColor ?? (b.cover?.artUrl ? '#f2ddb2' : palette.fg);
+		hideTitle = Boolean(b.cover?.hideTitle);
+	}
+
+	function onArtUrlInput(value: string) {
+		artUrlInput = value;
+		artUrl = value.trim();
+		uploadedArtName = '';
 	}
 
 	async function onFile(e: Event) {
@@ -40,6 +58,8 @@
 			reader.onerror = () => reject(reader.error);
 			reader.readAsDataURL(file);
 		});
+		artUrlInput = '';
+		uploadedArtName = file.name;
 	}
 
 	async function save() {
@@ -50,11 +70,11 @@
 			const updated = await booksApi.update(book.id, {
 				title: book.title,
 				titleRu: book.titleRu ?? '',
-				author: book.author,
+				author: author.trim(),
 				subtitle: book.subtitle ?? '',
 				year: book.year ?? null,
 				settings: book.settings,
-				cover: { palette, spineText: spineText.trim(), artUrl: artUrl.trim() || null },
+				cover: { palette, spineText: spineText.trim(), artUrl: artUrl.trim() || null, titleColor, hideTitle },
 				sourceMarkdown: book.sourceMarkdown ?? '',
 				contentHash: book.contentHash ?? '',
 				pageCount: book.pageCount
@@ -93,7 +113,7 @@
 </script>
 
 <div style="max-width:1080px;margin:0 auto;padding:26px 26px 70px">
-	<button class="mf-btn mf-btn--ghost" onclick={() => (book ? goto(`/library/${book.id}`) : goto('/library'))}>
+	<button class="mf-btn mf-btn--ghost" onclick={() => goto('/library')}>
 		<Icon name="chevL" size={16} />{$t('nav_library')}
 	</button>
 
@@ -102,7 +122,10 @@
 	{:else if book}
 		<div class="cover-grid">
 			<aside class="preview">
-				<BookCover book={preview} w={300} />
+				<div class="book-preview">
+					<BookSpine book={preview} h={450} />
+					<BookCover book={preview} w={300} />
+				</div>
 				<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
 					<button class="mf-btn mf-btn--primary" onclick={save} disabled={saving}>
 						<Icon name="check" size={16} />{savedFlash ? $t('saved') : $t('save_cover')}
@@ -116,6 +139,11 @@
 			<section>
 				<div class="eyebrow">{$t('edit_cover')}</div>
 				<h1 style="font-family:var(--font-display);font-size:30px;margin:6px 0 22px">{book.title}</h1>
+
+				<label class="field">
+					<span>{$t('f_author')}</span>
+					<input bind:value={author} placeholder={$t('anon')} />
+				</label>
 
 				<label class="field">
 					<span>{$t('spine_title')}</span>
@@ -141,7 +169,7 @@
 
 				<label class="field">
 					<span>{`${$t('art_source')} URL`}</span>
-					<input bind:value={artUrl} placeholder="https://..." />
+					<input value={artUrlInput} placeholder="https://..." oninput={(e) => onArtUrlInput(e.currentTarget.value)} />
 				</label>
 
 				<label class="upload">
@@ -153,8 +181,24 @@
 					<input type="file" accept="image/png,image/jpeg,image/webp" onchange={onFile} />
 				</label>
 
+				{#if uploadedArtName}
+					<div class="uploaded-note">
+						<Icon name="image" size={16} />{uploadedArtName}
+					</div>
+				{/if}
+
+				<label class="field">
+					<span>{$t('cover_text_color')}</span>
+					<input type="color" bind:value={titleColor} />
+				</label>
+
+				<label class="check-field">
+					<input type="checkbox" bind:checked={hideTitle} />
+					<span>{$t('cover_hide_title')}</span>
+				</label>
+
 				{#if artUrl}
-					<button class="mf-btn mf-btn--ghost" onclick={() => (artUrl = '')}>
+					<button class="mf-btn mf-btn--ghost" onclick={() => ((artUrl = ''), (artUrlInput = ''), (uploadedArtName = ''))}>
 						<Icon name="close" size={16} />{$t('reset')}
 					</button>
 				{/if}
@@ -180,6 +224,12 @@
 		justify-items: center;
 		gap: 22px;
 	}
+	.book-preview {
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+		filter: drop-shadow(0 18px 22px rgba(40, 28, 14, 0.24));
+	}
 	.field {
 		display: block;
 		margin-bottom: 18px;
@@ -202,6 +252,34 @@
 		font-size: 16px;
 		color: var(--ink);
 		outline: none;
+	}
+	.field input[type='color'] {
+		width: 72px;
+		height: 42px;
+		padding: 4px;
+		cursor: pointer;
+	}
+	.uploaded-note {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: -4px 0 16px;
+		color: var(--ink-soft);
+		font-size: 13px;
+	}
+	.check-field {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin: 0 0 18px;
+		color: var(--ink);
+		font-size: 15px;
+		cursor: pointer;
+	}
+	.check-field input {
+		width: 17px;
+		height: 17px;
+		accent-color: var(--oxblood);
 	}
 	.swatches {
 		display: flex;

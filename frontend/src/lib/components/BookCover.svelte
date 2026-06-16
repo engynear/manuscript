@@ -12,6 +12,8 @@
 	let { book, w = 150, title = true, onclick }: Props = $props();
 
 	const pal = $derived(paletteFor(book));
+	const titleColor = $derived(book.cover?.titleColor || pal.fg);
+	const hideTitle = $derived(Boolean(book.cover?.hideTitle));
 	const h = $derived(Math.round(w * 1.5));
 	const sc = $derived(w / 150);
 
@@ -69,10 +71,10 @@
 		</div>
 	{/if}
 
-	{#if title}
+	{#if title && !hideTitle}
 		<div style="position:absolute;left:12%;right:8%;bottom:7%;text-align:left">
 			<div
-				style="font-family:var(--font-display);font-weight:700;line-height:1.08;color:{pal.fg};
+				style="font-family:var(--font-display);font-weight:700;line-height:1.08;color:{titleColor};
 					font-size:{titleSize}px;letter-spacing:.01em;text-shadow:0 1px 1px rgba(0,0,0,.4);
 					overflow-wrap:break-word"
 			>
@@ -80,7 +82,7 @@
 			</div>
 			<div style="width:{26 * sc}px;height:1px;background:{pal.foil};margin:{7 * sc}px 0;opacity:.8"></div>
 			<div
-				style="font-family:var(--font-display);font-size:{Math.max(8, 9.5 * sc)}px;letter-spacing:.16em;text-transform:uppercase;opacity:.85"
+				style="font-family:var(--font-display);font-size:{Math.max(8, 9.5 * sc)}px;letter-spacing:.16em;text-transform:uppercase;opacity:.85;color:{titleColor}"
 			>
 				{book.author}
 			</div>
