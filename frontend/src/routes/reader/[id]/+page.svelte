@@ -7,7 +7,7 @@
 	import { DEFAULT_SETTINGS } from '$lib/settings';
 	import type { Book, ManuscriptSettings } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
-	import BookSpread from '$lib/components/BookSpread.svelte';
+	import CanonicalManuscriptReader from '$lib/components/CanonicalManuscriptReader.svelte';
 	import ManuscriptPages from '$lib/components/ManuscriptPages.svelte';
 
 	let book = $state<Book | null>(null);
@@ -102,7 +102,11 @@
 				<div style="color:#f0e2c8;margin-top:60px">{error}</div>
 			{:else if book}
 				<div class="mf-fade-up" style="padding:20px 0">
-					<ManuscriptPages {md} {settings} width={540} />
+					{#if book.contentHash}
+						<CanonicalManuscriptReader {book} mode="scroll" />
+					{:else}
+						<ManuscriptPages {md} {settings} width={540} />
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -115,7 +119,11 @@
 			{:else if book}
 				<div class="mf-fade-up" style="width:100%;height:100%">
 					{#key mode}
-						<BookSpread {md} {settings} {mode} {book} />
+						{#if book.contentHash}
+							<CanonicalManuscriptReader {book} {mode} />
+						{:else}
+							<ManuscriptPages {md} {settings} width={540} />
+						{/if}
 					{/key}
 				</div>
 			{/if}

@@ -129,8 +129,8 @@
 		<div class="cover-grid">
 			<aside class="preview">
 				<div class="book-preview">
-					<BookSpine book={preview} h={450} />
-					<BookCover book={preview} w={300} />
+					<BookSpine book={preview} h={390} />
+					<BookCover book={preview} w={260} />
 				</div>
 				<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
 					<button class="mf-btn mf-btn--primary" onclick={save} disabled={saving}>
@@ -227,8 +227,8 @@
 <style>
 	.cover-grid {
 		display: grid;
-		grid-template-columns: 340px minmax(0, 1fr);
-		gap: 46px;
+		grid-template-columns: minmax(360px, 430px) minmax(0, 1fr);
+		gap: 34px;
 		align-items: start;
 		margin-top: 22px;
 	}
@@ -243,6 +243,7 @@
 		display: flex;
 		align-items: flex-end;
 		justify-content: center;
+		max-width: 100%;
 		filter: drop-shadow(0 18px 22px rgba(40, 28, 14, 0.24));
 	}
 	.field {

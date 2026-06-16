@@ -228,7 +228,6 @@
 				>
 				<div style="flex:1">
 					<h2 style="margin:0;font-family:var(--font-display);font-size:18px">{$t('forged_title')}</h2>
-					<div style="font-size:13px;color:var(--ink-faint)">{$t('forged_sub')}</div>
 				</div>
 			</div>
 

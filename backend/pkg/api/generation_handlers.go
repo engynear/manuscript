@@ -110,13 +110,13 @@ var (
 	markdownHeading  = regexp.MustCompile(`^(#{1,6})\s+(.+)$`)
 )
 
-const generationCacheVersion = "v5"
+const generationCacheVersion = "v6"
 
 const (
-	pageUnits             = 112.0
-	firstPageUnits        = 102.0
-	minNextPageUnits      = 14.0
-	newSectionStartUnits  = 34.0
+	pageUnits             = 84.0
+	firstPageUnits        = 74.0
+	minNextPageUnits      = 18.0
+	newSectionStartUnits  = 30.0
 	defaultSectionHeading = 2
 )
 
@@ -164,6 +164,10 @@ func (s *Server) handleGenerateManuscript(w http.ResponseWriter, r *http.Request
 	jobDir := filepath.Join(s.cfg.MediaDir, "generated", hash)
 	sourceDir := filepath.Join(s.cfg.MediaDir, "generated", sourceHash)
 	imageDir := filepath.Join(sourceDir, "images")
+	if err := os.MkdirAll(jobDir, 0o755); err != nil {
+		send(generationProgress{Type: "error", Message: "could not prepare output directory"})
+		return
+	}
 	if err := os.MkdirAll(imageDir, 0o755); err != nil {
 		send(generationProgress{Type: "error", Message: "could not prepare output directory"})
 		return
@@ -186,6 +190,7 @@ func (s *Server) handleGenerateManuscript(w http.ResponseWriter, r *http.Request
 			send(generationProgress{Type: "progress", Step: "plan-cache-skip", Message: "Plan cache could not be written", Progress: 27})
 		}
 	}
+	plan = postProcessPlan(plan)
 	plan = ensureIllustrations(plan, req.Settings.ImageLimit)
 
 	sectionsWithImages := imageSections(plan, req.Settings.ImageLimit)
@@ -241,6 +246,10 @@ func (s *Server) handleGenerateManuscript(w http.ResponseWriter, r *http.Request
 	send(generationProgress{Type: "progress", Step: "html", Message: "Composing styled preview", Progress: 72})
 	publicBaseURL := requestBaseURL(r)
 	previewHTML := renderPreviewHTML(plan, images, req.Settings, publicBaseURL)
+	if err := os.WriteFile(filepath.Join(jobDir, "manuscript.html"), []byte(previewHTML), 0o644); err != nil {
+		writeError(w, http.StatusInternalServerError, "could not write manuscript html")
+		return
+	}
 
 	send(generationProgress{Type: "progress", Step: "pdf", Message: "Printing PDF from preview layout", Progress: 88})
 	pdfPath := filepath.Join(jobDir, "manuscript.pdf")
@@ -636,6 +645,58 @@ func restorePlanBody(source manuscriptPlan, planned manuscriptPlan) manuscriptPl
 	return out
 }
 
+func postProcessPlan(plan manuscriptPlan) manuscriptPlan {
+	previousHadOrnament := false
+	for i := range plan.Sections {
+		section := &plan.Sections[i]
+		if sameText(section.DisplayHeading, plan.Title) ||
+			sameText(section.OriginalHeading, plan.Title) ||
+			(plan.Subtitle != "" && (sameText(section.DisplayHeading, plan.Subtitle) || sameText(section.OriginalHeading, plan.Subtitle))) {
+			section.DisplayHeading = ""
+		}
+		nextShort := i+1 < len(plan.Sections) && shortSection(plan.Sections[i+1])
+		suppressOrnament := i <= 1 || previousHadOrnament || finalSectionLike(*section) || shortSection(*section) || nextShort
+		if section.Ornament && suppressOrnament {
+			section.Ornament = false
+		}
+		previousHadOrnament = section.Ornament
+	}
+	return plan
+}
+
+func comparableText(value string) string {
+	value = strings.ToLower(value)
+	replacer := strings.NewReplacer(
+		"«", " ", "»", " ", "\"", " ", "'", " ", ".", " ", ",", " ", ":", " ", ";", " ",
+		"!", " ", "?", " ", "(", " ", ")", " ", "[", " ", "]", " ", "{", " ", "}", " ",
+		"—", " ", "–", " ", "-", " ",
+	)
+	return strings.Join(strings.Fields(replacer.Replace(value)), " ")
+}
+
+func sameText(a, b string) bool {
+	left := comparableText(a)
+	right := comparableText(b)
+	if left == "" || right == "" {
+		return false
+	}
+	return left == right || strings.Contains(left, right) || strings.Contains(right, left)
+}
+
+func finalSectionLike(section planSection) bool {
+	text := comparableText(section.OriginalHeading + " " + section.DisplayHeading)
+	return strings.Contains(text, "the end") ||
+		strings.Contains(text, "finis") ||
+		strings.Contains(text, "conclusion") ||
+		strings.Contains(text, "epilogue") ||
+		strings.Contains(text, "конец") ||
+		strings.Contains(text, "послесловие")
+}
+
+func shortSection(section planSection) bool {
+	return len([]rune(comparableText(section.BodyMarkdown))) < 180
+}
+
 func findPlannedSection(sections []planSection, id string) (planSection, bool) {
 	for _, section := range sections {
 		if section.ID == id {
@@ -987,13 +1048,13 @@ func markdownToManuscriptBlocks(markdown string, dropCap bool, settings generati
 
 func splitLongParagraph(text string) []string {
 	text = strings.TrimSpace(text)
-	if len([]rune(text)) < 420 {
+	if len([]rune(text)) < 260 {
 		return []string{text}
 	}
 	parts := []string{}
 	current := strings.Builder{}
 	for _, token := range strings.Fields(text) {
-		if current.Len()+len(token) > 320 && current.Len() > 0 {
+		if current.Len()+len(token) > 190 && current.Len() > 0 {
 			parts = append(parts, strings.TrimSpace(current.String()))
 			current.Reset()
 		}
@@ -1025,10 +1086,10 @@ func renderDropcapBlock(text string) string {
 func textUnits(text string, fontSize int) float64 {
 	normalized := strings.Join(strings.Fields(plainText(text)), " ")
 	size := normalizedFontSize(fontSize)
-	charsPerLine := maxInt(46, 72-(size-16)*3)
-	lineUnits := 3.45 * (float64(size) / 20.0)
+	charsPerLine := maxInt(30, 38-(size-16)*2)
+	lineUnits := 5.0 * (float64(size) / 20.0)
 	lines := maxInt(1, (len([]rune(normalized))+charsPerLine-1)/charsPerLine)
-	return maxFloat(5, float64(lines)*lineUnits+2.6)
+	return maxFloat(7, float64(lines)*lineUnits+4)
 }
 
 func figureBlock(section planSection, images map[string]generatedImage) *manuscriptBlock {
