@@ -144,7 +144,7 @@
 							</div>
 						</div>
 					{:else}
-						<div style="display:flex;align-items:flex-end;gap:5px;min-height:232px;padding-bottom:2px">
+						<div class="books-row" class:dragging={!!drag} style="display:flex;align-items:flex-end;gap:5px;min-height:232px;padding-bottom:2px">
 							{#each shelfBooks as book, i (book.id)}
 								<div
 									class="shelf-book"
@@ -160,7 +160,7 @@
 									}}
 									style="cursor:grab"
 								>
-									<BookSpine {book} h={232} onclick={() => goto(`/reader/${book.id}`)} />
+									<BookSpine {book} h={232} turn={!drag} onclick={() => goto(`/reader/${book.id}?from=/shelves`)} />
 								</div>
 							{/each}
 						</div>
@@ -246,6 +246,10 @@
 	.shelf-book:hover ~ .shelf-book,
 	.shelf-book:focus-within ~ .shelf-book {
 		transform: translateX(132px);
+	}
+	/* While dragging, don't shift neighbours — keep the shelf stable for the drop. */
+	.books-row.dragging .shelf-book {
+		transform: none !important;
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.shelf-book {

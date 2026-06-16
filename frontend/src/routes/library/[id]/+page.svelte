@@ -94,7 +94,7 @@
 					<BookCover book={preview} w={260} />
 				</div>
 				<div class="actions">
-					<button class="mf-btn mf-btn--primary" onclick={() => book && goto(`/reader/${book.id}`)}>
+					<button class="mf-btn mf-btn--primary" onclick={() => book && goto(`/reader/${book.id}?from=/library/${book.id}`)}>
 						<Icon name="read" size={16} />{$t('read')}
 					</button>
 					<button class="mf-btn" onclick={() => book && goto(`/cover/${book.id}`)}>

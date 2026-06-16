@@ -8,8 +8,10 @@
 		book: Book;
 		h?: number;
 		onclick?: () => void;
+		/** Turn-to-cover on hover/focus. Disable while dragging so the book resets. */
+		turn?: boolean;
 	}
-	let { book, h = 230, onclick }: Props = $props();
+	let { book, h = 230, onclick, turn = true }: Props = $props();
 
 	const pal = $derived(paletteFor(book));
 	const spineTextColor = $derived(book.cover?.spineTextColor || pal.fg);
@@ -81,7 +83,7 @@
 	});
 </script>
 
-<div class="stage" style="width:{w}px;height:{h}px;flex:0 0 auto;--coverW:{coverW}px">
+<div class="stage" class:no-turn={!turn} style="width:{w}px;height:{h}px;flex:0 0 auto;--coverW:{coverW}px">
 <div class="pivot">
 <button
 	class="spine"
@@ -149,9 +151,16 @@
 	.stage:focus-within {
 		z-index: 10;
 	}
-	.stage:hover .pivot,
-	.stage:focus-within .pivot {
+	.stage:not(.no-turn):hover .pivot,
+	.stage:not(.no-turn):focus-within .pivot {
 		transform: translateZ(40px) rotateY(-72deg);
+	}
+	/* While dragging, never turn — the book stays a flat spine so it resets. */
+	.stage.no-turn .pivot {
+		transform: none;
+	}
+	.stage.no-turn .cover-face {
+		display: none;
 	}
 
 	.spine {

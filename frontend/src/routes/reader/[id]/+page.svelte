@@ -19,6 +19,10 @@
 	// independent of the print page-break setting. Scroll mode reuses the paginated
 	// renderer, so force the chapter break here too for a consistent reading model.
 	const readerSettings = $derived<ManuscriptSettings>({ ...settings, chapterStart: 'newPage' });
+	// Where "back" returns to: the page the reader was opened from (e.g. a shelf),
+	// falling back to the library when opened without a `from` hint.
+	const backTo = $derived($page.url.searchParams.get('from') || '/library');
+	const backLabel = $derived(backTo.startsWith('/shelves') ? $t('nav_shelves') : $t('nav_library'));
 	const md = $derived(book?.sourceMarkdown || `# ${book?.title ?? ''}`);
 	const plan = $derived(book?.plan ?? null);
 	const images = $derived(book?.images ?? []);
@@ -105,8 +109,8 @@
 	style="position:fixed;inset:0;display:flex;flex-direction:column"
 >
 	<div class="rd-topbar" style="position:relative;z-index:3;display:flex;align-items:center;gap:12px;padding:14px 22px">
-		<button class="reader-btn" onclick={() => goto('/library')}>
-			<Icon name="chevL" size={17} />{$t('nav_library')}
+		<button class="reader-btn" onclick={() => goto(backTo)}>
+			<Icon name="chevL" size={17} />{backLabel}
 		</button>
 		<div style="flex:1"></div>
 		<div style="text-align:center;color:#f0e2c8">
