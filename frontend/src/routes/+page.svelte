@@ -154,11 +154,11 @@
 
 			{#if $forgeTab === 'md'}
 				<div
-					style="display:flex;margin:16px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper-edge)"
+					style="display:flex;margin:16px;height:360px;max-height:46vh;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper-edge)"
 				>
 					<div
 						aria-hidden="true"
-						style="padding:14px 10px;text-align:right;font-family:var(--font-mono);font-size:12.5px;line-height:1.6;color:var(--ink-ghost);background:rgba(0,0,0,.025);user-select:none;min-width:38px"
+						style="height:100%;overflow:hidden;padding:14px 10px;text-align:right;font-family:var(--font-mono);font-size:12.5px;line-height:1.6;color:var(--ink-ghost);background:rgba(0,0,0,.025);user-select:none;min-width:38px"
 					>
 						{#each Array(lineCount) as _, i}
 							<div>{i + 1}</div>
@@ -167,7 +167,7 @@
 					<textarea
 						bind:value={$forgeMarkdown}
 						spellcheck="false"
-						style="flex:1;border:none;outline:none;resize:none;height:360px;max-height:46vh;overflow:auto;padding:14px;font-family:var(--font-mono);font-size:13.5px;line-height:1.6;color:var(--ink);background:transparent"
+						style="flex:1;min-height:0;height:100%;border:none;outline:none;resize:none;overflow:auto;padding:14px;font-family:var(--font-mono);font-size:13.5px;line-height:1.6;color:var(--ink);background:transparent"
 					></textarea>
 				</div>
 			{:else}

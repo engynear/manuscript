@@ -11,7 +11,8 @@ export const DEFAULT_SETTINGS: ManuscriptSettings = {
 	divider: '/assets/manuscript/dividers/dividers-04-red-and-gold-gothic-divider.png',
 	titleDivider: '/assets/manuscript/dividers/dividers-05-simple-gold-ink-flourish.png',
 	dropcap: '/assets/manuscript/dropcaps/dropcaps-03-red-gold-illuminated-initial-frame.png',
-	fontStyle: 'garamond'
+	fontStyle: 'garamond',
+	fontSize: 20
 };
 
 /** App-wide manuscript settings (Forge + Settings share this). */

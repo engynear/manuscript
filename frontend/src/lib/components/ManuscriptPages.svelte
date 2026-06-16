@@ -23,6 +23,7 @@
 	const ornW = $derived(Math.round(pageW * 0.115));
 	const ornLeft = $derived(Math.round(pageW * 0.04));
 	const contentH = $derived(pageH - padTop - padBot);
+	const fs = $derived(s.fontSize ?? 20);
 
 	function parse(src: string): Block[] {
 		const blocks: Block[] = [];
@@ -38,12 +39,12 @@
 			if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
 				flush();
 				blocks.push({ t: 'hr', text: '' });
-			} else if (l.startsWith('## ')) {
+			} else if (/^#{2,6}\s+/.test(trimmed)) {
 				flush();
-				blocks.push({ t: 'h2', text: l.slice(3) });
-			} else if (l.startsWith('# ')) {
+				blocks.push({ t: 'h2', text: trimmed.replace(/^#{2,6}\s+/, '') });
+			} else if (/^#\s+/.test(trimmed)) {
 				flush();
-				blocks.push({ t: 'h1', text: l.slice(2) });
+				blocks.push({ t: 'h1', text: trimmed.replace(/^#\s+/, '') });
 			} else if (trimmed === '') {
 				flush();
 			} else {
@@ -51,7 +52,34 @@
 			}
 		}
 		flush();
-		return blocks;
+		return trimRules(blocks.flatMap((block) =>
+			block.t === 'p' ? splitParagraph(block.text).map((text) => ({ ...block, text })) : [block]
+		));
+	}
+
+	function trimRules(blocks: Block[]): Block[] {
+		return blocks.filter((block, i) => {
+			if (block.t !== 'hr') return true;
+			const prev = blocks[i - 1]?.t;
+			const next = blocks[i + 1]?.t;
+			return prev !== 'hr' && next !== 'hr' && prev !== 'h1' && prev !== 'h2' && next !== 'h1' && next !== 'h2';
+		});
+	}
+
+	function splitParagraph(text: string): string[] {
+		if (text.length < 420) return [text];
+		const out: string[] = [];
+		let cur = '';
+		for (const token of text.split(/\s+/)) {
+			if ((cur + ' ' + token).length > 320 && cur) {
+				out.push(cur.trim());
+				cur = token;
+			} else {
+				cur = cur ? `${cur} ${token}` : token;
+			}
+		}
+		if (cur.trim()) out.push(cur.trim());
+		return out;
 	}
 
 	function escapeHtml(value: string): string {
@@ -162,7 +190,7 @@
 	aria-hidden="true"
 	style="position:absolute;left:-99999px;top:0;visibility:hidden;width:{pageW -
 		padX * 2 -
-		ornW}px;font-family:{family};font-size:17px;line-height:1.7;color:{ink.ink}"
+		ornW}px;font-family:{family};font-size:{fs}px;line-height:1.52;color:{ink.ink}"
 >
 	{#each blocks as b, i}
 		<div>{@render blockView(b, i === firstParaIdx)}</div>
@@ -175,7 +203,7 @@
 		<div
 			style="position:relative;overflow:hidden;flex:0 0 auto;width:{pageW}px;height:{pageH}px;
 				background-image:url({s.paper});background-size:100% auto;background-position:top center;background-repeat:repeat-y;
-				font-family:{family};color:{ink.ink};font-size:17px;line-height:1.7;
+				font-family:{family};color:{ink.ink};font-size:{fs}px;line-height:1.52;
 				box-shadow:var(--shadow-lg);border-radius:3px"
 		>
 			<div

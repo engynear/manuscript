@@ -7,6 +7,7 @@
 
 	const family = $derived(fontFamilyFor(s.fontStyle));
 	const ink = $derived(inkThemeForPaper(s.paper));
+	const fs = $derived(s.fontSize ?? 20);
 	const dropLetter = $derived($lang === 'ru' ? 'Б' : 'T');
 </script>
 
@@ -30,7 +31,7 @@
 	<div
 		style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%;padding:48px 40px 40px 96px;color:{ink.ink}"
 	>
-		<h4 style="margin:0;text-align:center;font-size:26px;font-weight:700;line-height:1.1;color:{ink.red}">
+		<h4 style="margin:0;text-align:center;font-size:{Math.round(fs * 1.3)}px;font-weight:700;line-height:1.1;color:{ink.red}">
 			{$t('sample_heading')}
 		</h4>
 		{#if s.titleDivider}
@@ -45,7 +46,7 @@
 				<img src={s.dropcap} alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />
 				<span style="position:relative;z-index:1">{dropLetter}</span>
 			</span>
-			<p style="margin:0;font-size:15px;line-height:1.55">{$t('sample_line')}</p>
+			<p style="margin:0;font-size:{Math.max(13, Math.round(fs * 0.75))}px;line-height:1.55">{$t('sample_line')}</p>
 		</div>
 
 		{#if s.divider}

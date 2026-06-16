@@ -1,16 +1,18 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import type { ManuscriptSettings } from '$lib/types';
+	import type { Book, ManuscriptSettings } from '$lib/types';
 	import { fontFamilyFor, dropcapBackground, inkThemeForPaper } from '$lib/manuscript';
 	import Icon from '$lib/components/Icon.svelte';
+	import BookCover from '$lib/components/BookCover.svelte';
 
 	interface Props {
 		md: string;
 		settings: ManuscriptSettings;
+		book?: Book;
 		/** 'spread' = facing two-page book, 'single' = one page at a time. */
 		mode?: 'spread' | 'single';
 	}
-	let { md, settings: s, mode = 'spread' }: Props = $props();
+	let { md, settings: s, book, mode = 'spread' }: Props = $props();
 
 	type Block = { t: 'h1' | 'h2' | 'p' | 'hr'; text: string };
 
@@ -35,7 +37,7 @@
 	const padTop = $derived(Math.round(pageH * 0.085));
 	const padBot = $derived(Math.round(pageH * 0.07));
 	const ornW = $derived(Math.round(pageW * 0.115));
-	const fs = $derived(Math.max(14, Math.round(pageW * 0.044)));
+	const fs = $derived(Math.max(14, Math.round((s.fontSize ?? 20) * (pageW / 460))));
 	const contentH = $derived(pageH - padTop - padBot);
 
 	function parse(src: string): Block[] {
@@ -52,12 +54,12 @@
 			if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
 				flush();
 				blocks.push({ t: 'hr', text: '' });
-			} else if (l.startsWith('## ')) {
+			} else if (/^#{2,6}\s+/.test(trimmed)) {
 				flush();
-				blocks.push({ t: 'h2', text: l.slice(3) });
-			} else if (l.startsWith('# ')) {
+				blocks.push({ t: 'h2', text: trimmed.replace(/^#{2,6}\s+/, '') });
+			} else if (/^#\s+/.test(trimmed)) {
 				flush();
-				blocks.push({ t: 'h1', text: l.slice(2) });
+				blocks.push({ t: 'h1', text: trimmed.replace(/^#\s+/, '') });
 			} else if (trimmed === '') {
 				flush();
 			} else {
@@ -65,7 +67,34 @@
 			}
 		}
 		flush();
-		return blocks;
+		return trimRules(blocks.flatMap((block) =>
+			block.t === 'p' ? splitParagraph(block.text).map((text) => ({ ...block, text })) : [block]
+		));
+	}
+
+	function trimRules(blocks: Block[]): Block[] {
+		return blocks.filter((block, i) => {
+			if (block.t !== 'hr') return true;
+			const prev = blocks[i - 1]?.t;
+			const next = blocks[i + 1]?.t;
+			return prev !== 'hr' && next !== 'hr' && prev !== 'h1' && prev !== 'h2' && next !== 'h1' && next !== 'h2';
+		});
+	}
+
+	function splitParagraph(text: string): string[] {
+		if (text.length < 420) return [text];
+		const out: string[] = [];
+		let cur = '';
+		for (const token of text.split(/\s+/)) {
+			if ((cur + ' ' + token).length > 320 && cur) {
+				out.push(cur.trim());
+				cur = token;
+			} else {
+				cur = cur ? `${cur} ${token}` : token;
+			}
+		}
+		if (cur.trim()) out.push(cur.trim());
+		return out;
 	}
 
 	function escapeHtml(value: string): string {
@@ -146,33 +175,47 @@
 	let turning = $state<{ dir: 'next' | 'prev' } | null>(null);
 	let leafEl = $state<HTMLDivElement>();
 
-	const total = $derived(pages.length);
-	const canNext = $derived(!turning && spread + per < total);
-	const canPrev = $derived(!turning && spread - per >= 0);
+	const hasCover = $derived(Boolean(book));
+	const coverOnly = $derived(hasCover && !single && spread === 0);
+	const total = $derived(pages.length + (hasCover ? 1 : 0));
+	const contentSpread = $derived(hasCover ? spread - 1 : spread);
+	const canNext = $derived(!turning && (coverOnly ? pages.length > 0 : spread + per < total));
+	const canPrev = $derived(!turning && (hasCover && !single && spread === 1 ? true : spread - per >= 0));
 
 	// Underneath the flipping leaf we already paint the destination page(s) so
 	// they are revealed seamlessly as the leaf lifts.
-	const leftIdx = $derived(turning?.dir === 'prev' ? spread - 2 : spread);
-	const rightIdx = $derived(turning?.dir === 'next' ? spread + 3 : spread + 1);
-	const leafFront = $derived(turning?.dir === 'next' ? spread + 1 : spread);
-	const leafBack = $derived(turning?.dir === 'next' ? spread + 2 : spread - 1);
+	const leftIdx = $derived((turning?.dir === 'prev' ? contentSpread - 2 : contentSpread));
+	const rightIdx = $derived((turning?.dir === 'next' ? contentSpread + 3 : contentSpread + 1));
+	const leafFront = $derived(turning?.dir === 'next' ? contentSpread + 1 : contentSpread);
+	const leafBack = $derived(turning?.dir === 'next' ? contentSpread + 2 : contentSpread - 1);
 	// Single mode: the static layer shows the destination page; the leaf is the
 	// current page peeling away to reveal it (its back is blank paper, idx -1).
-	const centerIdx = $derived(turning ? (turning.dir === 'next' ? spread + 1 : spread - 1) : spread);
-	const leafFrontIdx = $derived(single ? spread : leafFront);
+	const centerIdx = $derived(turning ? (turning.dir === 'next' ? contentSpread + 1 : contentSpread - 1) : contentSpread);
+	const leafFrontIdx = $derived(single ? contentSpread : leafFront);
 	const leafBackIdx = $derived(single ? -1 : leafBack);
 
-	const lastPage = $derived(Math.min(spread + per, total));
+	const lastPage = $derived(coverOnly ? 1 : Math.min(spread + per, total));
 
 	// Keep the index aligned when the layout mode changes.
 	$effect(() => {
-		if (mode === 'spread' && spread % 2 === 1) spread = spread - 1;
+		if (mode === 'spread') {
+			const offset = hasCover ? 1 : 0;
+			if (spread > 0 && (spread - offset) % 2 !== 0) spread = Math.max(offset, spread - 1);
+		}
 	});
 
 	async function turn(dir: 'next' | 'prev') {
 		if (turning) return;
-		if (dir === 'next' && spread + per >= total) return;
-		if (dir === 'prev' && spread - per < 0) return;
+		if (dir === 'next' && !coverOnly && spread + per >= total) return;
+		if (dir === 'prev' && !(hasCover && !single && spread === 1) && spread - per < 0) return;
+		if (hasCover && !single && spread === 1 && dir === 'prev') {
+			spread = 0;
+			return;
+		}
+		if (single || (hasCover && spread === 0)) {
+			spread = dir === 'next' ? (hasCover && spread === 0 ? 1 : spread + per) : spread - per;
+			return;
+		}
 		turning = { dir };
 		await tick();
 		const el = leafEl;
@@ -217,7 +260,7 @@
 				setTimeout(finish, dur + 120);
 			});
 		}
-		spread = dir === 'next' ? spread + per : spread - per;
+		spread = dir === 'next' ? spread + per : hasCover && !single && spread === 1 ? 0 : spread - per;
 		turning = null;
 	}
 
@@ -292,6 +335,11 @@
 			background-image:url({s.paper});background-size:100% 100%;background-position:center;
 			font-family:{family};color:{ink.ink};font-size:{fs}px;line-height:1.7"
 	>
+		{#if idx === -1 && book}
+			<div style="position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(115deg,#261309,#6d3a22 58%,#32170d)">
+				<BookCover {book} w={Math.round(pageW * 0.72)} />
+			</div>
+		{:else}
 		<!-- ambient page sheen -->
 		<div
 			style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 28%,rgba(255,245,210,.12),transparent 46%)"
@@ -313,7 +361,9 @@
 					alt=""
 					style="position:absolute;{side === 'right'
 						? `right:${Math.round(padX * 0.3)}px`
-						: `left:${Math.round(padX * 0.3)}px`};top:{padTop}px;height:{contentH}px;width:{ornW}px;object-fit:contain;object-position:top;opacity:.95"
+						: `left:${Math.round(padX * 0.3)}px`};top:{padTop}px;height:{contentH}px;width:{ornW}px;object-fit:contain;object-position:top;opacity:.95;transform:{side === 'right'
+						? 'scaleX(-1)'
+						: 'none'}"
 				/>
 			{/if}
 			<div
@@ -325,6 +375,7 @@
 					{@render blockView(blocks[bi], bi === firstParaIdx)}
 				{/each}
 			</div>
+		{/if}
 		{/if}
 	</div>
 {/snippet}
@@ -345,14 +396,14 @@
 
 	<div
 		class="bs-book"
-		style="width:{single ? pageW : pageW * 2}px;height:{pageH}px"
+		style="width:{single || coverOnly ? pageW : pageW * 2}px;height:{pageH}px"
 		role="group"
 		aria-label="Page {spread + 1}{single ? '' : ` to ${lastPage}`} of {total}"
 	>
-		{#if single}
+		{#if single || coverOnly}
 			<!-- single centered page -->
 			<div class="bs-page" style="left:0;width:{pageW}px;height:{pageH}px;border-radius:4px">
-				{@render face(centerIdx, 'single')}
+				{@render face(coverOnly ? -1 : centerIdx, 'single')}
 			</div>
 		{:else}
 			<!-- spine -->

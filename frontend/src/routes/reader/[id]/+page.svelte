@@ -9,8 +9,6 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import BookSpread from '$lib/components/BookSpread.svelte';
 	import ManuscriptPages from '$lib/components/ManuscriptPages.svelte';
-	import BookCover from '$lib/components/BookCover.svelte';
-	import BookSpine from '$lib/components/BookSpine.svelte';
 
 	let book = $state<Book | null>(null);
 	let error = $state('');
@@ -23,7 +21,6 @@
 	const STORE_KEY = 'mf:reader-mode';
 	let mode = $state<Mode>('spread');
 	let menuOpen = $state(false);
-	let coverOpen = $state(false);
 
 	const modeOptions: { value: Mode; key: string; icon: 'contents' | 'read' | 'sort' }[] = [
 		{ value: 'spread', key: 'spread', icon: 'read' },
@@ -53,11 +50,6 @@
 		<button class="reader-btn" onclick={() => goto('/library')}>
 			<Icon name="chevL" size={17} />{$t('nav_library')}
 		</button>
-		{#if book}
-			<button class="cover-chip" aria-label={$t('edit_cover')} onclick={() => (coverOpen = true)}>
-				<BookCover {book} w={42} title={false} />
-			</button>
-		{/if}
 		<div style="flex:1"></div>
 		<div style="text-align:center;color:#f0e2c8">
 			<div style="font-family:var(--font-display);font-size:16px">{book?.title ?? ''}</div>
@@ -123,94 +115,15 @@
 			{:else if book}
 				<div class="mf-fade-up" style="width:100%;height:100%">
 					{#key mode}
-						<BookSpread {md} {settings} {mode} />
+						<BookSpread {md} {settings} {mode} {book} />
 					{/key}
 				</div>
 			{/if}
 		</div>
 	{/if}
-
-	{#if coverOpen && book}
-		<button class="cover-scrim" aria-label="Close cover" onclick={() => (coverOpen = false)}></button>
-		<div class="cover-modal" role="dialog" aria-modal="true" aria-label={book.title}>
-			<button class="reader-btn cover-close" onclick={() => (coverOpen = false)}>
-				<Icon name="close" size={17} />
-			</button>
-			<div class="cover-display">
-				<BookSpine {book} h={420} />
-				<BookCover {book} w={280} />
-			</div>
-			<div class="cover-title">
-				<strong>{book.title}</strong>
-				<span>{book.author}</span>
-			</div>
-		</div>
-	{/if}
 </div>
 
 <style>
-	.cover-chip {
-		display: grid;
-		place-items: center;
-		width: 42px;
-		height: 56px;
-		padding: 0;
-		border: none;
-		background: transparent;
-		cursor: pointer;
-		transition: transform 0.16s ease;
-	}
-	.cover-chip:hover {
-		transform: translateY(-2px);
-	}
-	.cover-scrim {
-		position: fixed;
-		inset: 0;
-		z-index: 20;
-		border: none;
-		background: rgba(16, 9, 4, 0.62);
-		backdrop-filter: blur(3px);
-	}
-	.cover-modal {
-		position: fixed;
-		z-index: 21;
-		left: 50%;
-		top: 50%;
-		transform: translate(-50%, -50%);
-		display: grid;
-		justify-items: center;
-		gap: 18px;
-		padding: 24px 28px 22px;
-		border: 1px solid rgba(240, 226, 200, 0.16);
-		border-radius: 12px;
-		background: color-mix(in srgb, var(--leather-dark) 88%, black);
-		box-shadow: 0 28px 70px rgba(0, 0, 0, 0.52);
-	}
-	.cover-close {
-		position: absolute;
-		right: 12px;
-		top: 12px;
-	}
-	.cover-display {
-		display: flex;
-		align-items: flex-end;
-		margin-top: 22px;
-		filter: drop-shadow(0 20px 24px rgba(0, 0, 0, 0.28));
-	}
-	.cover-title {
-		display: grid;
-		gap: 4px;
-		text-align: center;
-		color: #f0e2c8;
-	}
-	.cover-title strong {
-		font-family: var(--font-display);
-		font-size: 18px;
-	}
-	.cover-title span {
-		font-size: 13px;
-		opacity: 0.7;
-	}
 	.rd-menu {
 		position: relative;
 	}

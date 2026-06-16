@@ -116,6 +116,20 @@
 			<section style="border-top:1px solid var(--line);padding:18px 0">
 				<h3 style="margin:0;font-family:var(--font-display);font-size:16px">{$t('s_font')}</h3>
 				<p style="margin:2px 0 10px;font-size:13px;color:var(--ink-faint)">{$t('set_font_sub')}</p>
+				<div style="display:grid;gap:8px;margin:0 0 14px">
+					<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+						<span style="font-size:13px;font-weight:700;color:var(--ink-soft)">Размер текста</span>
+						<span style="font-weight:700;color:var(--oxblood)">{draft.fontSize}px</span>
+					</div>
+					<input
+						type="range"
+						min="16"
+						max="24"
+						step="1"
+						value={draft.fontSize}
+						oninput={(e) => set('fontSize', Number(e.currentTarget.value))}
+					/>
+				</div>
 				<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
 					{#each visibleFonts as font}
 						<button

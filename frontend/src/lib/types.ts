@@ -50,6 +50,7 @@ export interface ManuscriptSettings {
 	titleDivider: string;
 	dropcap: string;
 	fontStyle: FontStyle;
+	fontSize: number;
 }
 
 export interface Book {
