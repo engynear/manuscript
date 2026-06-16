@@ -26,14 +26,18 @@
 	const coverOnly = $derived(hasCover && mode === 'spread' && index === 0);
 	const per = $derived(single || coverOnly ? 1 : 2);
 	const A4 = 1.41421;
-	const pageH = $derived(
+	const baseW = 794;
+	const baseH = 1123;
+	const targetH = $derived(
 		scroll
 			? Math.round(Math.min(920, Math.max(520, vw - 56) * A4))
 			: single || coverOnly
 				? Math.max(380, Math.min(880, Math.min(vh - 150, (vw - 96) * A4)))
 				: Math.max(380, Math.min(760, Math.min(vh - 150, (vw - 104) / A4)))
 	);
-	const pageW = $derived(Math.round(pageH / A4));
+	const scale = $derived(targetH / baseH);
+	const pageH = $derived(Math.round(baseH * scale));
+	const pageW = $derived(Math.round(baseW * scale));
 	const canPrev = $derived(index > 0);
 	const canNext = $derived(index + per < total);
 	const lastVisible = $derived(Math.min(total, index + per));
@@ -125,14 +129,19 @@
 
 {#snippet manuscriptPage(pageIndex: number, side: 'single' | 'left' | 'right')}
 	<div
-		class="cm-render cm-page {side === 'right' ? 'cm-page-right' : ''}"
-		style="--cm-page-w:{pageW}px;--cm-page-h:{pageH}px"
+		class="cm-page-shell"
+		style="width:{pageW}px;height:{pageH}px"
 	>
-		{@render styleTag()}
-		<div class="manuscript-root">
-			<article class="manuscript-book">
-				{@html htmlFor(pageIndex)}
-			</article>
+		<div
+			class="cm-render cm-page {side === 'right' ? 'cm-page-right' : ''}"
+			style="--cm-scale:{scale};--cm-base-w:{baseW}px;--cm-base-h:{baseH}px"
+		>
+			{@render styleTag()}
+			<div class="manuscript-root">
+				<article class="manuscript-book">
+					{@html htmlFor(pageIndex)}
+				</article>
+			</div>
 		</div>
 	</div>
 {/snippet}
@@ -195,8 +204,8 @@
 		padding: 0;
 	}
 	:global(.cm-render .manuscript-sheet) {
-		width: var(--cm-page-w) !important;
-		height: var(--cm-page-h) !important;
+		width: var(--cm-base-w) !important;
+		height: var(--cm-base-h) !important;
 		max-width: none !important;
 		aspect-ratio: auto !important;
 		box-shadow: none !important;
@@ -228,21 +237,30 @@
 	.cm-book.single {
 		width: auto;
 	}
-	.cm-page {
+	.cm-page-shell {
 		position: relative;
-		width: var(--cm-page-w);
-		height: var(--cm-page-h);
 		overflow: hidden;
 		background: #2c241b;
 	}
+	.cm-page {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: var(--cm-base-w);
+		height: var(--cm-base-h);
+		overflow: hidden;
+		background: #2c241b;
+		transform: scale(var(--cm-scale));
+		transform-origin: top left;
+	}
 	.cm-page-right :global(.manuscript-margin-ornament) {
 		left: auto !important;
-		right: 34px !important;
+		right: 30px !important;
 		transform: scaleX(-1);
 	}
 	.cm-page-right :global(.manuscript-content) {
-		padding-left: 70px !important;
-		padding-right: 150px !important;
+		padding-left: 68px !important;
+		padding-right: 147px !important;
 	}
 	.cm-cover {
 		display: grid;

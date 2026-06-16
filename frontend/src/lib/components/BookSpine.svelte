@@ -28,12 +28,12 @@
 	// Shrink the title (and let it wrap to a 2nd column) so the whole thing fits.
 	const titleSize = $derived(
 		(() => {
-			const base = Math.max(9, 12.5 * sc);
+			const base = Math.max(10.5, 15 * sc);
 			// usable vertical run for the (rotated) text, in px — allow up to 2 columns
-			const avail = h * 0.62;
+			const avail = h * 0.72;
 			// rough advance per character for the display face
-			const fit = avail / Math.max(1, longestLine * 0.95);
-			return Math.max(6.5, Math.min(base, fit));
+			const fit = avail / Math.max(1, longestLine * 0.88);
+			return Math.max(8, Math.min(base, fit));
 		})()
 	);
 </script>
@@ -58,7 +58,7 @@
 	<div
 		style="writing-mode:vertical-rl;transform:rotate(180deg);font-family:var(--font-display);
 			font-weight:600;font-size:{titleSize}px;letter-spacing:.02em;line-height:1.05;text-align:center;
-			text-shadow:0 1px 1px rgba(0,0,0,.45);max-height:72%;max-width:calc(100% - {10 * sc}px);
+			text-shadow:0 1px 1px rgba(0,0,0,.45);max-height:78%;max-width:calc(100% - {8 * sc}px);
 			overflow:hidden;overflow-wrap:anywhere;word-break:break-word;white-space:pre-line"
 	>
 		{spineText}
