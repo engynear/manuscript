@@ -75,11 +75,20 @@ func (c *Client) GeneratePlan(ctx context.Context, systemPrompt, userPrompt stri
 // partial_images keeps the connection active during the long render.
 // Port of lib/generateImages.ts:143.
 func (c *Client) GenerateImage(ctx context.Context, prompt, size string) ([]byte, error) {
+	return c.generateImage(ctx, prompt, size, "transparent")
+}
+
+// GenerateCoverImage calls the Images API for full-bleed cover artwork.
+func (c *Client) GenerateCoverImage(ctx context.Context, prompt, size string) ([]byte, error) {
+	return c.generateImage(ctx, prompt, size, "opaque")
+}
+
+func (c *Client) generateImage(ctx context.Context, prompt, size, background string) ([]byte, error) {
 	body := map[string]any{
 		"model":          c.imageModel,
 		"prompt":         prompt,
 		"size":           size,
-		"background":     "transparent",
+		"background":     background,
 		"output_format":  "png",
 		"quality":        c.imageQuality,
 		"stream":         true,

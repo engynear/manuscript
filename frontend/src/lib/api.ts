@@ -184,6 +184,18 @@ export const generate = {
 	) => streamNDJSON('/api/images', body, onEvent)
 };
 
+export async function generateCoverArt(body: {
+	prompt: string;
+	title: string;
+	author: string;
+}): Promise<string> {
+	const { url } = await request<{ url: string }>('/api/cover-art', {
+		method: 'POST',
+		body: JSON.stringify(body)
+	});
+	return url;
+}
+
 /** Upload an image (e.g. cover art) and return its relative media URL (e.g. "/media/uploads/..."). */
 export async function uploadImage(file: File): Promise<string> {
 	const form = new FormData();

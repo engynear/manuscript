@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
-	import { books as booksApi, currentUser, auth, uploadImage, mediaUrl } from '$lib/api';
+	import { books as booksApi, currentUser, auth, uploadImage, mediaUrl, generateCoverArt } from '$lib/api';
 	import { PALETTES, paletteFor } from '$lib/covers';
 	import { shade } from '$lib/shade';
 	import type { Book, Palette } from '$lib/types';
@@ -22,20 +22,22 @@
 	let pal = $state<Palette>(PALETTES[0]);
 	let hideTitle = $state(false);
 	let rotateX = $state(5);
-	let rotateY = $state(-34);
+	let rotateY = $state(-22);
 	let dragStart = $state<{ x: number; y: number; rx: number; ry: number } | null>(null);
 
 	type Tab = 'templates' | 'generate' | 'upload';
 	let tab = $state<Tab>('templates');
 	/** Relative media URL of the cover art (persisted), or '' for procedural art. */
 	let artUrl = $state('');
+	let coverPrompt = $state('');
 	let genBusy = $state(false);
+	let genErr = $state('');
 	let uploadErr = $state('');
 
 	const artSrc = $derived(artUrl ? mediaUrl(artUrl) : '');
 	const coverColor = $derived(pal.cover ?? pal.spine);
-	const bookDepth = $derived(Math.round(Math.max(78, Math.min(138, 66 + Math.sqrt(book?.pageCount ?? 180) * 3.8))));
-	const spineFont = $derived(Math.round(Math.max(11, Math.min(17, bookDepth * 0.24))));
+	const bookDepth = $derived(Math.round(Math.max(86, Math.min(150, 78 + Math.sqrt(book?.pageCount ?? 180) * 4.2))));
+	const spineFont = $derived(Math.round(Math.max(12, Math.min(18, bookDepth * 0.19))));
 	let previewArtFailed = $state(false);
 
 	// Spine colours from the design (a curated subset of the palette spines).
@@ -73,14 +75,20 @@
 		}
 	}
 
-	// Placeholder for AI cover-art generation — not wired to a backend yet, so it
-	// resolves to the procedural illumination panel (matching the design prototype).
-	function genArt() {
+	async function genArt() {
 		genBusy = true;
-		setTimeout(() => {
-			artUrl = '';
+		genErr = '';
+		try {
+			artUrl = await generateCoverArt({
+				prompt: coverPrompt.trim(),
+				title: title.trim(),
+				author: author.trim()
+			});
+		} catch (e) {
+			genErr = e instanceof Error ? e.message : $t('upload_failed');
+		} finally {
 			genBusy = false;
-		}, 1600);
+		}
 	}
 
 	async function save() {
@@ -123,7 +131,7 @@
 
 	function rotateBook(e: PointerEvent) {
 		if (!dragStart) return;
-		rotateY = Math.max(-82, Math.min(18, dragStart.ry + (e.clientX - dragStart.x) * 0.2));
+		rotateY = Math.max(-74, Math.min(34, dragStart.ry + (e.clientX - dragStart.x) * 0.2));
 		rotateX = Math.max(-16, Math.min(18, dragStart.rx - (e.clientY - dragStart.y) * 0.12));
 	}
 
@@ -214,11 +222,16 @@
 					</div>
 				{:else if tab === 'generate'}
 					<div style="margin-bottom:18px">
-						<textarea rows="3" placeholder="A barrow-road under a rusted moon, ink and gilt…"></textarea>
+						<textarea
+							rows="3"
+							bind:value={coverPrompt}
+							placeholder="A barrow-road under a rusted moon, ink and gilt…"
+						></textarea>
 						<button class="mf-btn mf-btn--gilt gen" onclick={genArt} disabled={genBusy}>
 							<Icon name="sparkle" size={16} />{genBusy ? $t('gen_art_busy') : $t('gen_art')}
 						</button>
 						{#if genBusy}<div class="prog"><span></span></div>{/if}
+						{#if genErr}<p class="err">{genErr}</p>{/if}
 					</div>
 				{:else}
 					<label class="drop">
@@ -323,7 +336,7 @@
 									</div>
 								{/if}
 							</div>
-							<div class="book-back" style="background:{pal.spine}"></div>
+							<div class="page-block"></div>
 						</div>
 					</div>
 				</div>
@@ -580,24 +593,31 @@
 	}
 	.book3d {
 		position: relative;
-		width: 244px;
+		width: calc(var(--book-depth) + 252px);
 		height: 360px;
 		transform-style: preserve-3d;
 		transform: rotateY(var(--ry)) rotateX(var(--rx));
+		transform-origin: center center;
 		transition: filter 0.2s ease;
 		filter: drop-shadow(0 30px 36px rgba(40, 28, 14, 0.4));
 	}
 	.spine-face {
 		position: absolute;
-		left: calc(var(--book-depth) * -1);
+		left: 0;
 		top: 0;
 		width: var(--book-depth);
 		height: 360px;
+		transform: translateZ(8px) skewY(-1.5deg);
 		transform-origin: right center;
-		transform: rotateY(-90deg);
-		backface-visibility: hidden;
-		box-shadow: inset -8px 0 16px rgba(0, 0, 0, 0.28), inset 5px 0 10px rgba(255, 255, 255, 0.08);
+		box-shadow: inset -14px 0 18px rgba(0, 0, 0, 0.22), inset 7px 0 12px rgba(255, 255, 255, 0.08);
 		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 14px;
+		border-radius: 8px 2px 2px 8px;
+		border-right: 1px solid rgba(255, 255, 255, 0.16);
 	}
 	.spine-face::before,
 	.spine-face::after {
@@ -606,22 +626,13 @@
 		top: 0;
 		bottom: 0;
 		width: 1px;
-		background: rgba(0, 0, 0, 0.22);
+		background: rgba(0, 0, 0, 0.24);
 	}
 	.spine-face::before {
-		left: 9px;
+		left: 12px;
 	}
 	.spine-face::after {
-		right: 9px;
-	}
-	.spine-face {
-		transform-origin: left center;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 14px;
-		border-radius: 3px 0 0 3px;
+		right: 13px;
 	}
 	.spine-text {
 		writing-mode: vertical-rl;
@@ -639,23 +650,36 @@
 		text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 	}
 	.front {
-		width: 244px;
+		width: 252px;
 		height: 360px;
 		position: absolute;
-		inset: 0;
-		border-radius: 3px 7px 7px 3px;
+		left: var(--book-depth);
+		top: 0;
+		border-radius: 2px 8px 8px 2px;
 		overflow: hidden;
-		transform: translateZ(calc(var(--book-depth) * 0.5));
+		transform: translateZ(18px);
 		backface-visibility: hidden;
-		box-shadow: inset 6px 0 12px rgba(0, 0, 0, 0.32), inset -2px 0 4px rgba(255, 255, 255, 0.08);
+		box-shadow: inset 8px 0 14px rgba(0, 0, 0, 0.26), inset -3px 0 6px rgba(255, 255, 255, 0.08);
 	}
-	.book-back {
+	.front::after {
+		content: '';
 		position: absolute;
 		inset: 0;
-		border-radius: 3px 7px 7px 3px;
-		transform: rotateY(180deg) translateZ(calc(var(--book-depth) * 0.5));
-		backface-visibility: hidden;
-		box-shadow: inset -8px 0 14px rgba(0, 0, 0, 0.24);
+		pointer-events: none;
+		background: linear-gradient(90deg, rgba(0, 0, 0, 0.18), transparent 12%, transparent 88%, rgba(0, 0, 0, 0.16));
+	}
+	.page-block {
+		position: absolute;
+		left: calc(var(--book-depth) + 246px);
+		top: 7px;
+		width: 14px;
+		height: 346px;
+		border-radius: 0 7px 7px 0;
+		background:
+			repeating-linear-gradient(180deg, rgba(86, 52, 22, 0.16) 0 1px, transparent 1px 5px),
+			linear-gradient(90deg, #cdb383, #f4dfaf 55%, #b9945c);
+		transform: translateZ(7px) skewY(0.8deg);
+		box-shadow: inset -5px 0 8px rgba(83, 50, 24, 0.24);
 	}
 	.ct-title {
 		font-family: var(--font-display);

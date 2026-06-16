@@ -66,6 +66,7 @@ func (s *Server) Handler() http.Handler {
 
 			// User uploads (e.g. cover art).
 			r.Post("/upload", s.handleUpload)
+			r.Post("/cover-art", s.handleCoverArt)
 
 			r.Get("/books", s.handleListBooks)
 			r.Post("/books", s.handleCreateBook)
