@@ -22,7 +22,7 @@
 	let pal = $state<Palette>(PALETTES[0]);
 	let hideTitle = $state(false);
 	let rotateX = $state(5);
-	let rotateY = $state(-38);
+	let rotateY = $state(-34);
 	let dragStart = $state<{ x: number; y: number; rx: number; ry: number } | null>(null);
 
 	type Tab = 'templates' | 'generate' | 'upload';
@@ -34,7 +34,7 @@
 
 	const artSrc = $derived(artUrl ? mediaUrl(artUrl) : '');
 	const coverColor = $derived(pal.cover ?? pal.spine);
-	const bookDepth = $derived(Math.round(Math.max(54, Math.min(112, 48 + Math.sqrt(book?.pageCount ?? 180) * 3.4))));
+	const bookDepth = $derived(Math.round(Math.max(78, Math.min(138, 66 + Math.sqrt(book?.pageCount ?? 180) * 3.8))));
 	const spineFont = $derived(Math.round(Math.max(11, Math.min(17, bookDepth * 0.24))));
 	let previewArtFailed = $state(false);
 
@@ -123,7 +123,7 @@
 
 	function rotateBook(e: PointerEvent) {
 		if (!dragStart) return;
-		rotateY = Math.max(-58, Math.min(-10, dragStart.ry + (e.clientX - dragStart.x) * 0.18));
+		rotateY = Math.max(-82, Math.min(18, dragStart.ry + (e.clientX - dragStart.x) * 0.2));
 		rotateX = Math.max(-16, Math.min(18, dragStart.rx - (e.clientY - dragStart.y) * 0.12));
 	}
 
@@ -161,7 +161,7 @@
 {/snippet}
 
 <div class="wrap">
-	<button class="mf-btn mf-btn--ghost back" onclick={() => goto('/library')}>
+	<button class="mf-btn mf-btn--ghost back-btn" onclick={() => goto('/library')}>
 		<Icon name="chevL" size={16} />{$t('nav_library')}
 	</button>
 
@@ -298,7 +298,7 @@
 							<!-- front cover -->
 							<div
 								class="front"
-								style="background:linear-gradient(108deg,{shade(pal.spine, 1.05)},{coverColor} 12%,{coverColor} 88%,{shade(
+								style="background:linear-gradient(108deg,{shade(coverColor, 0.86)} 0%,{coverColor} 8%,{coverColor} 88%,{shade(
 									coverColor,
 									0.92
 								)});color:{pal.fg}"
@@ -323,7 +323,7 @@
 									</div>
 								{/if}
 							</div>
-							<div class="back" style="background:{pal.spine}"></div>
+							<div class="book-back" style="background:{pal.spine}"></div>
 						</div>
 					</div>
 				</div>
@@ -338,7 +338,7 @@
 		margin: 0 auto;
 		padding: 24px 26px 60px;
 	}
-	.back {
+	.back-btn {
 		margin-bottom: 16px;
 	}
 	.cover-grid {
@@ -589,11 +589,11 @@
 	}
 	.spine-face {
 		position: absolute;
-		left: 0;
+		left: calc(var(--book-depth) * -1);
 		top: 0;
 		width: var(--book-depth);
 		height: 360px;
-		transform-origin: left center;
+		transform-origin: right center;
 		transform: rotateY(-90deg);
 		backface-visibility: hidden;
 		box-shadow: inset -8px 0 16px rgba(0, 0, 0, 0.28), inset 5px 0 10px rgba(255, 255, 255, 0.08);
@@ -649,7 +649,7 @@
 		backface-visibility: hidden;
 		box-shadow: inset 6px 0 12px rgba(0, 0, 0, 0.32), inset -2px 0 4px rgba(255, 255, 255, 0.08);
 	}
-	.back {
+	.book-back {
 		position: absolute;
 		inset: 0;
 		border-radius: 3px 7px 7px 3px;

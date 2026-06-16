@@ -5,6 +5,7 @@
 	import { shelves as shelvesApi, books as booksApi, currentUser, auth } from '$lib/api';
 	import type { Book, Shelf } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
+	import BookCover from '$lib/components/BookCover.svelte';
 	import BookSpine from '$lib/components/BookSpine.svelte';
 	import ShareModal from '$lib/components/ShareModal.svelte';
 
@@ -112,7 +113,7 @@
 				{/if}
 				<span class="mf-chip">{shelfBooks.length}</span>
 				<div style="flex:1"></div>
-				<button class="mf-btn mf-btn--ghost" onclick={() => (addBookShelf = shelf)} style="padding:6px 12px"><Icon name="plus" size={16} /><span class="hide-sm">{$t('add_book')}</span></button>
+				<button class="mf-btn mf-btn--ghost" onclick={() => (addBookShelf = shelf)} style="padding:6px 12px"><Icon name="edit" size={16} /><span class="hide-sm">{$t('edit_shelf')}</span></button>
 				<button class="mf-btn mf-btn--ghost" onclick={() => (shareShelf = shelf)} style="padding:6px 12px"><Icon name="share" size={16} /><span class="hide-sm">{$t('share')}</span></button>
 				<button class="mf-btn mf-btn--ghost" onclick={() => removeShelf(shelf)} style="padding:8px;color:var(--oxblood)"><Icon name="trash" size={16} /></button>
 			</div>
@@ -132,7 +133,6 @@
 					{#if shelfBooks.length === 0}
 						<div style="min-height:200px;display:grid;place-items:center;text-align:center;color:rgba(245,236,214,.78);padding:20px">
 							<div>
-								<Icon name="plus" size={26} style="opacity:.6" />
 								<div style="margin-top:8px;font-size:14.5px;max-width:320px;font-family:var(--font-chrome)">{$t('empty_shelf')}</div>
 							</div>
 						</div>
@@ -187,10 +187,10 @@
 			aria-modal="true"
 			tabindex="-1"
 			class="mf-card mf-fade-up"
-			style="width:min(440px,96vw);max-height:80vh;display:flex;flex-direction:column;background:var(--paper-card)"
+			style="width:min(560px,96vw);max-height:80vh;display:flex;flex-direction:column;background:var(--paper-card)"
 		>
 			<div style="padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
-				<h2 style="font-family:var(--font-display);font-size:19px;margin:0">{$t('add_book')}</h2>
+				<h2 style="font-family:var(--font-display);font-size:19px;margin:0">{$t('edit_shelf')}</h2>
 				<button class="mf-btn mf-btn--ghost" onclick={() => (addBookShelf = null)} style="padding:6px"><Icon name="close" size={18} /></button>
 			</div>
 			<div style="overflow:auto;padding:12px">
@@ -200,8 +200,12 @@
 					<div style="display:grid;gap:4px">
 						{#each books as b (b.id)}
 							{@const on = (shelves.find((s) => s.id === target.id)?.books ?? []).includes(b.id)}
-							<button class="menu-row" onclick={() => toggleBook(target, b.id)} style="gap:12px">
-								<span style="flex:1;text-align:left">{b.title}</span>
+							<button class="book-row" onclick={() => toggleBook(target, b.id)}>
+								<BookCover book={b} w={44} title={false} />
+								<span class="book-row-meta">
+									<span class="book-row-title">{b.title}</span>
+									<span class="book-row-author">{b.author || $t('anon')}</span>
+								</span>
 								<span
 									style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;color:#f0dcc0;
 										border:1.5px solid {on ? 'var(--oxblood)' : 'var(--line-strong)'};background:{on ? 'var(--oxblood)' : 'transparent'}"
@@ -245,5 +249,46 @@
 	}
 	.shelf-name:hover {
 		border-bottom-color: var(--line-strong);
+	}
+	.book-row {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 8px 10px;
+		border: none;
+		border-radius: 8px;
+		background: transparent;
+		color: var(--ink);
+		cursor: pointer;
+		font-family: var(--font-chrome);
+		text-align: left;
+		transition: background 0.16s ease;
+	}
+	.book-row:hover {
+		background: var(--paper-edge);
+	}
+	.book-row:focus-visible {
+		outline: 2px solid var(--gilt);
+		outline-offset: -2px;
+	}
+	.book-row-meta {
+		flex: 1;
+		min-width: 0;
+		display: grid;
+		gap: 3px;
+	}
+	.book-row-title {
+		font-weight: 700;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.book-row-author {
+		font-size: 12.5px;
+		color: var(--ink-faint);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 </style>
