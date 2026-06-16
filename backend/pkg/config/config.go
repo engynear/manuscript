@@ -79,7 +79,25 @@ type Config struct {
 	ImageQuality string
 	MediaDir     string
 	MediaBaseURL string
+	AssetsDir    string
 	CORSOrigins  []string
+}
+
+// resolveAssetsDir picks the manuscript assets directory: ASSETS_DIR if set,
+// otherwise the first existing of the Docker path and the repo's public/assets
+// (so `go run ./cmd/server` from backend/ or the repo root also works).
+func resolveAssetsDir() string {
+	if v := strings.TrimSpace(os.Getenv("ASSETS_DIR")); v != "" {
+		return v
+	}
+	for _, c := range []string{"/app/assets", "public/assets", "../public/assets"} {
+		if abs, err := filepath.Abs(c); err == nil {
+			if info, err := os.Stat(abs); err == nil && info.IsDir() {
+				return abs
+			}
+		}
+	}
+	return "/app/assets"
 }
 
 func get(key, fallback string) string {
@@ -106,6 +124,10 @@ func Load() (*Config, error) {
 		ImageQuality: get("OPENAI_IMAGE_QUALITY", "medium"),
 		MediaDir:     get("MEDIA_DIR", "/data/media"),
 		MediaBaseURL: get("MEDIA_BASE_URL", "/media"),
+		// Manuscript static assets (papers, dropcaps, ornaments, fonts) served at
+		// /assets/. The server-side preview/PDF renderer references them via a
+		// <base href> pointing back at this server, so the backend must serve them.
+		AssetsDir: resolveAssetsDir(),
 	}
 
 	if origins := get("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000"); origins != "" {

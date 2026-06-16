@@ -90,7 +90,27 @@ func (s *Server) Handler() http.Handler {
 
 	// Serve generated illustration assets from the media volume.
 	r.Handle(s.cfg.MediaBaseURL+"/*", http.StripPrefix(s.cfg.MediaBaseURL+"/",
-		http.FileServer(http.Dir(s.cfg.MediaDir))))
+		publicAsset(http.FileServer(http.Dir(s.cfg.MediaDir)))))
+
+	// Serve the manuscript static assets (papers, dropcaps, ornaments, fonts).
+	// The server-side preview/PDF renderer references these via a <base href>
+	// pointing back at this server, so they must be reachable here too.
+	if s.cfg.AssetsDir != "" {
+		r.Handle("/assets/*", http.StripPrefix("/assets/",
+			publicAsset(http.FileServer(http.Dir(s.cfg.AssetsDir)))))
+	}
 
 	return r
+}
+
+// publicAsset wraps a static file handler so public assets (papers, fonts,
+// generated images) can be loaded cross-origin. The preview iframe (srcdoc)
+// and the headless-Chrome PDF render both have a "null" origin, so @font-face
+// fetches need an anonymous Access-Control-Allow-Origin. These files carry no
+// credentials, so a wildcard is safe.
+func publicAsset(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		next.ServeHTTP(w, r)
+	})
 }
