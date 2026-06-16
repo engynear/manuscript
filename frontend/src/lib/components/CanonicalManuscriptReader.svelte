@@ -18,7 +18,7 @@
 	let vw = $state(1280);
 	let vh = $state(800);
 	let index = $state(0);
-	let turning = $state<0 | 1 | -1>(0);
+	let turning = $state<{ dir: 1 | -1; target: number } | null>(null);
 
 	const hasCover = $derived(showCover);
 	const total = $derived(pages.length + (hasCover ? 1 : 0));
@@ -39,8 +39,8 @@
 	const scale = $derived(targetH / baseH);
 	const pageH = $derived(Math.round(baseH * scale));
 	const pageW = $derived(Math.round(baseW * scale));
-	const canPrev = $derived(turning === 0 && index > 0);
-	const canNext = $derived(turning === 0 && index + per < total);
+	const canPrev = $derived(!turning && index > 0);
+	const canNext = $derived(!turning && index + per < total);
 	const lastVisible = $derived(Math.min(total, index + per));
 	const generatedStyle = $derived(`<${'style'}>${css}</${'style'}>`);
 
@@ -49,25 +49,24 @@
 		return pages[pageIndex - (hasCover ? 1 : 0)] ?? '';
 	}
 
+	function targetFor(delta: 1 | -1): number {
+		if (delta < 0) return index <= 1 ? 0 : Math.max(1, index - 2);
+		return coverOnly ? 1 : index + per;
+	}
+
 	function go(delta: 1 | -1) {
 		if (delta > 0 && !canNext) return;
 		if (delta < 0 && !canPrev) return;
-		const apply = () => {
-			if (delta < 0) {
-				index = index <= 1 ? 0 : Math.max(1, index - 2);
-			} else {
-				index = coverOnly ? 1 : index + per;
-			}
-		};
-		if (mode === 'spread' && !coverOnly) {
-			turning = delta;
+		const target = targetFor(delta);
+		if (mode === 'spread' && !coverOnly && target > 0) {
+			turning = { dir: delta, target };
 			window.setTimeout(() => {
-				apply();
-				turning = 0;
-			}, 360);
+				index = target;
+				turning = null;
+			}, 760);
 			return;
 		}
-		apply();
+		index = target;
 	}
 
 	function onKey(e: KeyboardEvent) {
@@ -139,23 +138,48 @@
 	</div>
 {/snippet}
 
-{#snippet manuscriptPage(pageIndex: number, side: 'single' | 'left' | 'right')}
+{#snippet manuscriptFace(pageIndex: number, side: 'single' | 'left' | 'right')}
 	<div
-		class="cm-page-shell"
-		style="width:{pageW}px;height:{pageH}px"
+		class="cm-render cm-page {side === 'right' ? 'cm-page-right' : ''}"
+		style="--cm-scale:{scale};--cm-base-w:{baseW}px;--cm-base-h:{baseH}px"
 	>
-		<div
-			class="cm-render cm-page {side === 'right' ? 'cm-page-right' : ''}"
-			style="--cm-scale:{scale};--cm-base-w:{baseW}px;--cm-base-h:{baseH}px"
-		>
-			{@render styleTag()}
-			<div class="manuscript-root">
-				<article class="manuscript-book">
-					{@html htmlFor(pageIndex)}
-				</article>
-			</div>
+		{@render styleTag()}
+		<div class="manuscript-root">
+			<article class="manuscript-book">
+				{@html htmlFor(pageIndex)}
+			</article>
 		</div>
 	</div>
+{/snippet}
+
+{#snippet manuscriptPage(pageIndex: number, side: 'single' | 'left' | 'right')}
+	<div class="cm-page-shell" style="width:{pageW}px;height:{pageH}px">
+		{@render manuscriptFace(pageIndex, side)}
+	</div>
+{/snippet}
+
+{#snippet turningLeaf()}
+	{#if turning}
+		{@const frontIndex = turning.dir === 1 ? index + 1 : index}
+		{@const backIndex = turning.dir === 1 ? turning.target : turning.target + 1}
+		{@const frontSide = turning.dir === 1 ? 'right' : 'left'}
+		{@const backSide = turning.dir === 1 ? 'left' : 'right'}
+		<div
+			class="cm-leaf"
+			class:turn-next={turning.dir === 1}
+			class:turn-prev={turning.dir === -1}
+			style="width:{pageW}px;height:{pageH}px;left:{turning.dir === 1 ? pageW : 0}px"
+		>
+			<div class="cm-leaf-face cm-leaf-front">
+				{@render manuscriptFace(frontIndex, frontSide)}
+				<div class="cm-leaf-shade"></div>
+			</div>
+			<div class="cm-leaf-face cm-leaf-back">
+				{@render manuscriptFace(backIndex, backSide)}
+				<div class="cm-leaf-shade back"></div>
+			</div>
+		</div>
+	{/if}
 {/snippet}
 
 {#if error}
@@ -176,8 +200,6 @@
 		<div
 			class="cm-book"
 			class:single={single || coverOnly}
-			class:turn-next={turning === 1}
-			class:turn-prev={turning === -1}
 			style="height:{pageH}px"
 		>
 			{#if coverOnly}
@@ -189,10 +211,12 @@
 					{@render manuscriptPage(index, 'single')}
 				{/if}
 			{:else}
-				{@render manuscriptPage(index, 'left')}
-				{#if index + 1 < total}
-					{@render manuscriptPage(index + 1, 'right')}
+				{@const baseIndex = turning ? turning.target : index}
+				{@render manuscriptPage(baseIndex, 'left')}
+				{#if baseIndex + 1 < total}
+					{@render manuscriptPage(baseIndex + 1, 'right')}
 				{/if}
+				{@render turningLeaf()}
 			{/if}
 			<button class="cm-zone cm-prev" disabled={!canPrev} aria-label="Previous page" onclick={() => go(-1)}>
 				<span><Icon name="chevL" size={22} /></span>
@@ -267,29 +291,54 @@
 		backface-visibility: hidden;
 		transform-style: preserve-3d;
 	}
-	.cm-book.turn-next > .cm-page-shell:nth-child(2) {
-		z-index: 5;
-		transform-origin: left center;
-		animation: cm-turn-next 0.36s cubic-bezier(0.3, 0.04, 0.2, 1);
-		box-shadow: -18px 0 30px rgba(26, 13, 5, 0.28);
+	.cm-leaf {
+		position: absolute;
+		top: 0;
+		z-index: 6;
+		transform-style: preserve-3d;
+		pointer-events: none;
 	}
-	.cm-book.turn-prev > .cm-page-shell:nth-child(1) {
-		z-index: 5;
+	.cm-leaf.turn-next {
+		transform-origin: left center;
+		animation: cm-turn-next 0.76s cubic-bezier(0.22, 1, 0.36, 1) both;
+	}
+	.cm-leaf.turn-prev {
 		transform-origin: right center;
-		animation: cm-turn-prev 0.36s cubic-bezier(0.3, 0.04, 0.2, 1);
-		box-shadow: 18px 0 30px rgba(26, 13, 5, 0.28);
+		animation: cm-turn-prev 0.76s cubic-bezier(0.22, 1, 0.36, 1) both;
+	}
+	.cm-leaf-face {
+		position: absolute;
+		inset: 0;
+		overflow: hidden;
+		background: #2c241b;
+		backface-visibility: hidden;
+		box-shadow: 0 0 28px rgba(26, 13, 5, 0.28);
+	}
+	.cm-leaf-back {
+		transform: rotateY(180deg);
+	}
+	.cm-leaf-shade {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		background: linear-gradient(90deg, rgba(34, 17, 6, 0.36), transparent 34%, rgba(255, 238, 190, 0.08) 68%, rgba(34, 17, 6, 0.22));
+		mix-blend-mode: multiply;
+		opacity: 0.5;
+	}
+	.cm-leaf-shade.back {
+		background: linear-gradient(270deg, rgba(34, 17, 6, 0.3), transparent 42%, rgba(255, 238, 190, 0.1));
 	}
 	@keyframes cm-turn-next {
 		0% {
 			transform: rotateY(0deg);
 			filter: brightness(1);
 		}
-		58% {
-			filter: brightness(0.84);
+		42% {
+			filter: brightness(0.92);
 		}
 		100% {
-			transform: rotateY(-84deg);
-			filter: brightness(0.92);
+			transform: rotateY(-180deg);
+			filter: brightness(1);
 		}
 	}
 	@keyframes cm-turn-prev {
@@ -297,12 +346,18 @@
 			transform: rotateY(0deg);
 			filter: brightness(1);
 		}
-		58% {
-			filter: brightness(0.84);
+		42% {
+			filter: brightness(0.92);
 		}
 		100% {
-			transform: rotateY(84deg);
-			filter: brightness(0.92);
+			transform: rotateY(180deg);
+			filter: brightness(1);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.cm-leaf.turn-next,
+		.cm-leaf.turn-prev {
+			animation-duration: 1ms;
 		}
 	}
 	.cm-page {

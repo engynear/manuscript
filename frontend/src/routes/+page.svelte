@@ -35,7 +35,7 @@
 		max-width: 100% !important;
 		margin: 0 auto !important;
 		padding: 28px 0 44px !important;
-		zoom: min(.72, calc((100vw - 44px) / 794));
+		zoom: .58;
 	}
 }
 </style>`;
@@ -273,7 +273,7 @@
 					<iframe
 						title="Manuscript preview"
 						srcdoc={previewFrameHtml(result.previewHtml)}
-						style="display:block;width:100%;max-width:100%;box-sizing:border-box;min-height:680px;border:0;background:#2b2118;border-radius:8px"
+						style="display:block;width:100%;max-width:100%;box-sizing:border-box;min-height:720px;border:0;background:#2b2118;border-radius:8px"
 					></iframe>
 				{:else}
 					<div class="mf-fade-up">
