@@ -1289,6 +1289,15 @@ func renderPDF(ctx context.Context, path string, htmlDoc string) error {
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("no-sandbox", true),
 		chromedp.Flag("disable-dev-shm-usage", true),
+		// The document is loaded from a data: URL (an opaque/"public" address
+		// space) while its assets live on the backend at localhost (a "local"
+		// address space). Chrome's Private Network Access guard blocks those
+		// fetches (the "InsecureLocalNetwork" CORS errors) so paper, drop caps,
+		// ornaments and fonts never load into the PDF. Disable the guard.
+		// Chrome only honours the last --disable-features flag, so this repeats
+		// chromedp's defaults (site-per-process,Translate,BlinkGenPropertyTrees)
+		// alongside the Private Network Access guards.
+		chromedp.Flag("disable-features", "site-per-process,Translate,BlinkGenPropertyTrees,BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights,PrivateNetworkAccessRespectPreflightResults"),
 	)
 	if chromeBin := strings.TrimSpace(os.Getenv("CHROME_BIN")); chromeBin != "" {
 		allocOpts = append(allocOpts, chromedp.ExecPath(chromeBin))
