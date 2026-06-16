@@ -11,6 +11,7 @@
 	let { book, h = 230, onclick }: Props = $props();
 
 	const pal = $derived(paletteFor(book));
+	const spineTextColor = $derived(book.cover?.spineTextColor || pal.fg);
 	const sc = $derived(h / 230);
 
 	const spineText = $derived(spineTextFor(book));
@@ -43,7 +44,7 @@
 	onclick={onclick}
 	title={book.title}
 	style="width:{w}px;height:{h}px;position:relative;flex:0 0 auto;cursor:pointer;border:none;
-		border-radius:2px 2px 3px 3px;color:{pal.fg};padding:{12 * sc}px 0;
+		border-radius:2px 2px 3px 3px;color:{spineTextColor};padding:{12 * sc}px 0;
 		display:flex;flex-direction:column;align-items:center;justify-content:space-between;
 		background:linear-gradient(90deg,{shade(pal.spine, 0.78)} 0%,{pal.spine} 14%,{shade(
 		pal.spine,

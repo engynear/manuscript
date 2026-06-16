@@ -20,9 +20,12 @@ export interface Palette {
 
 export interface Cover {
 	palette?: Palette;
+	titleText?: string;
 	spineText?: string;
 	artUrl?: string | null;
+	artHistory?: string[];
 	titleColor?: string;
+	spineTextColor?: string;
 	hideTitle?: boolean;
 }
 

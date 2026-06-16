@@ -18,6 +18,7 @@
 	let artFailed = $state(false);
 	const titleColor = $derived(book.cover?.titleColor || pal.fg);
 	const hideTitle = $derived(Boolean(book.cover?.hideTitle));
+	const displayTitle = $derived(book.cover?.titleText || book.title);
 	const h = $derived(Math.round(w * 1.5));
 	const sc = $derived(w / 150);
 
@@ -26,7 +27,7 @@
 	const titleSize = $derived(
 		(() => {
 			const base = Math.max(11, 17 * sc);
-			const t = book.title || '';
+			const t = displayTitle || '';
 			const len = t.length;
 			const longest = t.split(/\s+/).reduce((m, w) => Math.max(m, w.length), 0);
 			// usable width of the title block ≈ 80% of the cover, advance ≈ 0.56·size
@@ -90,15 +91,9 @@
 			<div
 				style="font-family:var(--font-display);font-weight:700;line-height:1.08;color:{titleColor};
 					font-size:{titleSize}px;letter-spacing:.01em;text-shadow:0 1px 1px rgba(0,0,0,.4);
-					overflow-wrap:break-word"
+					overflow-wrap:break-word;white-space:pre-line"
 			>
-				{book.title}
-			</div>
-			<div style="width:{26 * sc}px;height:1px;background:{pal.foil};margin:{7 * sc}px 0;opacity:.8"></div>
-			<div
-				style="font-family:var(--font-display);font-size:{Math.max(8, 9.5 * sc)}px;letter-spacing:.16em;text-transform:uppercase;opacity:.85;color:{titleColor}"
-			>
-				{book.author}
+				{displayTitle}
 			</div>
 		</div>
 	{/if}

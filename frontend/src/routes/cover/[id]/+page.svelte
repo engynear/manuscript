@@ -6,8 +6,9 @@
 	import { books as booksApi, currentUser, auth, uploadImage, mediaUrl, generateCoverArt } from '$lib/api';
 	import { PALETTES, paletteFor } from '$lib/covers';
 	import { shade } from '$lib/shade';
-	import type { Book, Palette } from '$lib/types';
+	import type { Book } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
+	import CoverBook3D from '$lib/components/CoverBook3D.svelte';
 
 	let book = $state<Book | null>(null);
 	let error = $state('');
@@ -18,17 +19,18 @@
 	let title = $state('');
 	let author = $state('');
 	let subtitle = $state('');
+	let coverText = $state('');
 	let spineTitle = $state('');
-	let pal = $state<Palette>(PALETTES[0]);
+	let pal = $state(PALETTES[0]);
+	let coverTextColor = $state('');
+	let spineTextColor = $state('');
 	let hideTitle = $state(false);
-	let rotateX = $state(5);
-	let rotateY = $state(-22);
-	let dragStart = $state<{ x: number; y: number; rx: number; ry: number } | null>(null);
 
 	type Tab = 'templates' | 'generate' | 'upload';
 	let tab = $state<Tab>('templates');
 	/** Relative media URL of the cover art (persisted), or '' for procedural art. */
 	let artUrl = $state('');
+	let artHistory = $state<string[]>([]);
 	let coverPrompt = $state('');
 	let genBusy = $state(false);
 	let genErr = $state('');
@@ -36,9 +38,6 @@
 
 	const artSrc = $derived(artUrl ? mediaUrl(artUrl) : '');
 	const coverColor = $derived(pal.cover ?? pal.spine);
-	const bookDepth = $derived(Math.round(Math.max(86, Math.min(150, 78 + Math.sqrt(book?.pageCount ?? 180) * 4.2))));
-	const spineFont = $derived(Math.round(Math.max(12, Math.min(18, bookDepth * 0.19))));
-	let previewArtFailed = $state(false);
 
 	// Spine colours from the design (a curated subset of the palette spines).
 	const spineColors = [
@@ -51,17 +50,24 @@
 		title = b.title;
 		author = b.author;
 		subtitle = b.subtitle ?? '';
+		coverText = b.cover?.titleText ?? defaultCoverText(b.title, b.author);
 		spineTitle = b.cover?.spineText ?? b.title;
 		pal = b.cover?.palette ?? paletteFor(b);
 		pal = { ...pal, cover: pal.cover ?? pal.spine };
+		coverTextColor = b.cover?.titleColor ?? pal.fg;
+		spineTextColor = b.cover?.spineTextColor ?? pal.fg;
 		artUrl = b.cover?.artUrl ?? '';
+		artHistory = uniqueUrls(b.cover?.artHistory ?? (b.cover?.artUrl ? [b.cover.artUrl] : []));
 		hideTitle = Boolean(b.cover?.hideTitle);
 	}
 
-	$effect(() => {
-		void artSrc;
-		previewArtFailed = false;
-	});
+	function defaultCoverText(t: string, a: string) {
+		return [t, a].filter(Boolean).join('\n\n');
+	}
+
+	function uniqueUrls(urls: string[]) {
+		return Array.from(new Set(urls.filter(Boolean)));
+	}
 
 	async function onFile(e: Event) {
 		const input = e.target as HTMLInputElement;
@@ -79,11 +85,13 @@
 		genBusy = true;
 		genErr = '';
 		try {
-			artUrl = await generateCoverArt({
+			const url = await generateCoverArt({
 				prompt: coverPrompt.trim(),
 				title: title.trim(),
 				author: author.trim()
 			});
+			artUrl = url;
+			artHistory = uniqueUrls([url, ...artHistory]);
 		} catch (e) {
 			genErr = e instanceof Error ? e.message : $t('upload_failed');
 		} finally {
@@ -106,8 +114,12 @@
 				cover: {
 					...(book.cover ?? {}),
 					palette: { ...pal, cover: coverColor },
+					titleText: coverText.trim(),
 					spineText: spineTitle.trim(),
 					artUrl: artUrl || null,
+					artHistory,
+					titleColor: coverTextColor,
+					spineTextColor,
 					hideTitle
 				},
 				sourceMarkdown: book.sourceMarkdown ?? '',
@@ -123,22 +135,6 @@
 		}
 	}
 
-	function startRotate(e: PointerEvent) {
-		const target = e.currentTarget as HTMLElement;
-		target.setPointerCapture(e.pointerId);
-		dragStart = { x: e.clientX, y: e.clientY, rx: rotateX, ry: rotateY };
-	}
-
-	function rotateBook(e: PointerEvent) {
-		if (!dragStart) return;
-		rotateY = Math.max(-74, Math.min(34, dragStart.ry + (e.clientX - dragStart.x) * 0.2));
-		rotateX = Math.max(-16, Math.min(18, dragStart.rx - (e.clientY - dragStart.y) * 0.12));
-	}
-
-	function stopRotate() {
-		dragStart = null;
-	}
-
 	onMount(async () => {
 		const user = $currentUser ?? (await auth.me());
 		if (!user) {
@@ -152,21 +148,6 @@
 		}
 	});
 </script>
-
-{#snippet coverArt(p: Palette)}
-	<!-- procedural illumination panel (gilt frame + diamond motif) -->
-	<div
-		style="position:absolute;inset:11% 12% 30%;border:1px solid {p.foil};
-			box-shadow:inset 0 0 0 3px rgba(0,0,0,.12),inset 0 0 0 4px {p.foil}55;
-			display:grid;place-items:center;overflow:hidden;
-			background:radial-gradient(120% 100% at 50% 0%,{p.fg}22,transparent 60%)"
-	>
-		<div style="display:grid;gap:14%;place-items:center">
-			<div style="width:26px;height:26px;transform:rotate(45deg);border:1.5px solid {p.foil};box-shadow:inset 0 0 0 3px {p.fg}33"></div>
-			<div style="width:60%;height:1px;background:{p.foil};opacity:.7"></div>
-		</div>
-	</div>
-{/snippet}
 
 <div class="wrap">
 	<button class="mf-btn mf-btn--ghost back-btn" onclick={() => goto('/library')}>
@@ -196,6 +177,11 @@
 					<input bind:value={subtitle} placeholder="—" />
 				</label>
 
+				<label class="f">
+					<span class="lbl">{$t('cover_text')}</span>
+					<textarea rows="4" bind:value={coverText} placeholder={title}></textarea>
+				</label>
+
 				<!-- art source tabs -->
 				<div class="lbl" style="margin:8px 0 9px">{$t('art_source')}</div>
 				<div class="tabs">
@@ -215,10 +201,18 @@
 								style="background:linear-gradient(120deg,{p.spine},{shade(p.spine, 1.12)})"
 								onclick={() => {
 									pal = { ...pal, cover: p.spine, fg: p.fg, foil: p.foil };
+									if (!coverTextColor) coverTextColor = p.fg;
 									artUrl = '';
 								}}
 							></button>
 						{/each}
+						<label class="sw custom-color" title={$t('cover_color')}>
+							<input
+								type="color"
+								value={coverColor}
+								oninput={(e) => (pal = { ...pal, cover: (e.currentTarget as HTMLInputElement).value })}
+							/>
+						</label>
 					</div>
 				{:else if tab === 'generate'}
 					<div style="margin-bottom:18px">
@@ -232,6 +226,20 @@
 						</button>
 						{#if genBusy}<div class="prog"><span></span></div>{/if}
 						{#if genErr}<p class="err">{genErr}</p>{/if}
+						{#if artHistory.length}
+							<div class="art-gallery" aria-label={$t('generated_gallery')}>
+								{#each artHistory as url (url)}
+									<div class="art-tile" class:on={artUrl === url}>
+										<button class="art-pick" onclick={() => (artUrl = url)} aria-label={$t('select')}>
+											<img src={mediaUrl(url)} alt="" />
+										</button>
+										<a class="art-download" href={mediaUrl(url)} download>
+											<Icon name="download" size={14} />{$t('download_art')}
+										</a>
+									</div>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				{:else}
 					<label class="drop">
@@ -249,7 +257,33 @@
 
 				<!-- spine -->
 				<div class="spine-sec">
-					<div class="lbl" style="margin-bottom:10px">{$t('spine')}</div>
+					<div class="lbl" style="margin-bottom:10px">{$t('colors')}</div>
+					<div class="color-grid">
+						<label class="color-field">
+							<span>{$t('cover_color')}</span>
+							<input
+								type="color"
+								value={coverColor}
+								oninput={(e) => (pal = { ...pal, cover: (e.currentTarget as HTMLInputElement).value })}
+							/>
+						</label>
+						<label class="color-field">
+							<span>{$t('cover_text_color')}</span>
+							<input type="color" bind:value={coverTextColor} />
+						</label>
+						<label class="color-field">
+							<span>{$t('spine_color')}</span>
+							<input
+								type="color"
+								value={pal.spine}
+								oninput={(e) => (pal = { ...pal, spine: (e.currentTarget as HTMLInputElement).value })}
+							/>
+						</label>
+						<label class="color-field">
+							<span>{$t('spine_text_color')}</span>
+							<input type="color" bind:value={spineTextColor} />
+						</label>
+					</div>
 					<div class="sub" style="margin-bottom:8px">{$t('spine_color')}</div>
 					<div class="swatches">
 						{#each spineColors as c}
@@ -263,10 +297,17 @@
 								onclick={() => (pal = { ...pal, spine: c })}
 							></button>
 						{/each}
+						<label class="sw custom-color" title={$t('spine_color')}>
+							<input
+								type="color"
+								value={pal.spine}
+								oninput={(e) => (pal = { ...pal, spine: (e.currentTarget as HTMLInputElement).value })}
+							/>
+						</label>
 					</div>
 					<label class="f">
 						<span class="lbl">{$t('spine_title')}</span>
-						<input bind:value={spineTitle} placeholder={title} />
+						<textarea rows="3" bind:value={spineTitle} placeholder={title}></textarea>
 					</label>
 				</div>
 
@@ -281,64 +322,18 @@
 			<!-- live preview -->
 			<div class="mf-card preview">
 				<div class="stage">
-					<div
-						class="book3d-perspective"
-						onpointerdown={startRotate}
-						onpointermove={rotateBook}
-						onpointerup={stopRotate}
-						onpointercancel={stopRotate}
-						role="presentation"
-					>
-						<div
-							class="book3d"
-							style="--book-depth:{bookDepth}px;--cover-color:{coverColor};--rx:{rotateX}deg;--ry:{rotateY}deg"
-						>
-							<!-- spine face -->
-							<div
-								class="spine-face"
-								style="background:linear-gradient(90deg,{shade(pal.spine, 0.72)},{pal.spine} 38%,{shade(
-									pal.spine,
-									1.12
-								)} 62%,{shade(
-									pal.spine,
-									0.78
-								)});color:{pal.fg}"
-							>
-								<div style="width:60%;height:1.5px;background:{pal.foil}"></div>
-								<div class="spine-text" style="font-size:{spineFont}px">{spineTitle || title}</div>
-								<div style="width:60%;height:1.5px;background:{pal.foil}"></div>
-							</div>
-							<!-- front cover -->
-							<div
-								class="front"
-								style="background:linear-gradient(108deg,{shade(coverColor, 0.86)} 0%,{coverColor} 8%,{coverColor} 88%,{shade(
-									coverColor,
-									0.92
-								)});color:{pal.fg}"
-							>
-								<div style="position:absolute;left:10px;top:0;bottom:0;width:1.5px;background:rgba(0,0,0,.25)"></div>
-								{#if artSrc && !previewArtFailed}
-									<img
-										src={artSrc}
-										alt=""
-										onerror={() => (previewArtFailed = true)}
-										style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"
-									/>
-								{:else}
-									{@render coverArt(pal)}
-								{/if}
-								{#if !hideTitle}
-									<div style="position:absolute;left:12%;right:8%;bottom:7%">
-										<div class="ct-title">{title || '—'}</div>
-										{#if subtitle}<div class="ct-sub">{subtitle}</div>{/if}
-										<div style="width:32px;height:1px;background:{pal.foil};margin:8px 0;opacity:.85"></div>
-										<div class="ct-author">{author || ''}</div>
-									</div>
-								{/if}
-							</div>
-							<div class="page-block"></div>
-						</div>
-					</div>
+					<CoverBook3D
+						{artSrc}
+						{coverText}
+						spineText={spineTitle}
+						{coverColor}
+						spineColor={pal.spine}
+						{coverTextColor}
+						{spineTextColor}
+						foilColor={pal.foil}
+						{hideTitle}
+						pageCount={book.pageCount}
+					/>
 				</div>
 			</div>
 		</div>
@@ -441,7 +436,7 @@
 	}
 	.templates {
 		display: grid;
-		grid-template-columns: repeat(5, 1fr);
+		grid-template-columns: repeat(6, 1fr);
 		gap: 8px;
 		margin-bottom: 18px;
 	}
@@ -536,6 +531,102 @@
 		border: 2px solid var(--ink);
 		box-shadow: 0 0 0 2px var(--gilt);
 	}
+	.custom-color {
+		position: relative;
+		display: grid;
+		place-items: center;
+		background:
+			linear-gradient(45deg, transparent 46%, var(--ink) 47% 53%, transparent 54%),
+			conic-gradient(#d93636, #d9c436, #4caf50, #369bd9, #8f36d9, #d93636);
+		overflow: hidden;
+	}
+	.custom-color::after {
+		content: '+';
+		width: 18px;
+		height: 18px;
+		border-radius: 99px;
+		display: grid;
+		place-items: center;
+		background: var(--paper-card);
+		color: var(--ink);
+		font-weight: 700;
+		line-height: 1;
+	}
+	.custom-color input {
+		position: absolute;
+		inset: 0;
+		opacity: 0;
+		cursor: pointer;
+	}
+	.color-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 10px;
+		margin-bottom: 16px;
+	}
+	.color-field {
+		display: grid;
+		grid-template-columns: 1fr 42px;
+		align-items: center;
+		gap: 10px;
+		padding: 8px 10px;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--paper-edge);
+		font-size: 13px;
+		color: var(--ink-soft);
+	}
+	.color-field input {
+		width: 38px;
+		height: 28px;
+		padding: 0;
+		border: 1px solid var(--line-strong);
+		border-radius: 6px;
+		background: transparent;
+	}
+	.art-gallery {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+		gap: 10px;
+		margin-top: 14px;
+	}
+	.art-tile {
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--paper-edge);
+		padding: 6px;
+	}
+	.art-tile.on {
+		border-color: var(--oxblood);
+		box-shadow: 0 0 0 2px rgba(124, 34, 48, 0.18);
+	}
+	.art-pick {
+		display: block;
+		width: 100%;
+		aspect-ratio: 2 / 3;
+		border: none;
+		padding: 0;
+		border-radius: 5px;
+		overflow: hidden;
+		background: var(--paper-deep);
+	}
+	.art-pick img {
+		width: 100%;
+		height: 100%;
+		display: block;
+		object-fit: cover;
+	}
+	.art-download {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 4px;
+		width: 100%;
+		margin-top: 6px;
+		font-size: 11.5px;
+		color: var(--ink-soft);
+		text-decoration: none;
+	}
 	.save {
 		width: 100%;
 		justify-content: center;
@@ -577,130 +668,5 @@
 		flex: 1;
 		display: grid;
 		place-items: center;
-	}
-	.book3d-perspective {
-		perspective: 1600px;
-		display: grid;
-		place-items: center;
-		width: 100%;
-		min-height: 430px;
-		cursor: grab;
-		touch-action: none;
-		user-select: none;
-	}
-	.book3d-perspective:active {
-		cursor: grabbing;
-	}
-	.book3d {
-		position: relative;
-		width: calc(var(--book-depth) + 252px);
-		height: 360px;
-		transform-style: preserve-3d;
-		transform: rotateY(var(--ry)) rotateX(var(--rx));
-		transform-origin: center center;
-		transition: filter 0.2s ease;
-		filter: drop-shadow(0 30px 36px rgba(40, 28, 14, 0.4));
-	}
-	.spine-face {
-		position: absolute;
-		left: 0;
-		top: 0;
-		width: var(--book-depth);
-		height: 360px;
-		transform: translateZ(8px) skewY(-1.5deg);
-		transform-origin: right center;
-		box-shadow: inset -14px 0 18px rgba(0, 0, 0, 0.22), inset 7px 0 12px rgba(255, 255, 255, 0.08);
-		overflow: hidden;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 14px;
-		border-radius: 8px 2px 2px 8px;
-		border-right: 1px solid rgba(255, 255, 255, 0.16);
-	}
-	.spine-face::before,
-	.spine-face::after {
-		content: '';
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		width: 1px;
-		background: rgba(0, 0, 0, 0.24);
-	}
-	.spine-face::before {
-		left: 12px;
-	}
-	.spine-face::after {
-		right: 13px;
-	}
-	.spine-text {
-		writing-mode: vertical-rl;
-		transform: rotate(180deg);
-		font-family: var(--font-display);
-		font-weight: 700;
-		line-height: 1.05;
-		letter-spacing: 0.02em;
-		max-height: 260px;
-		max-width: calc(var(--book-depth) - 16px);
-		text-align: center;
-		overflow-wrap: anywhere;
-		word-break: break-word;
-		overflow: hidden;
-		text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
-	}
-	.front {
-		width: 252px;
-		height: 360px;
-		position: absolute;
-		left: var(--book-depth);
-		top: 0;
-		border-radius: 2px 8px 8px 2px;
-		overflow: hidden;
-		transform: translateZ(18px);
-		backface-visibility: hidden;
-		box-shadow: inset 8px 0 14px rgba(0, 0, 0, 0.26), inset -3px 0 6px rgba(255, 255, 255, 0.08);
-	}
-	.front::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		pointer-events: none;
-		background: linear-gradient(90deg, rgba(0, 0, 0, 0.18), transparent 12%, transparent 88%, rgba(0, 0, 0, 0.16));
-	}
-	.page-block {
-		position: absolute;
-		left: calc(var(--book-depth) + 246px);
-		top: 7px;
-		width: 14px;
-		height: 346px;
-		border-radius: 0 7px 7px 0;
-		background:
-			repeating-linear-gradient(180deg, rgba(86, 52, 22, 0.16) 0 1px, transparent 1px 5px),
-			linear-gradient(90deg, #cdb383, #f4dfaf 55%, #b9945c);
-		transform: translateZ(7px) skewY(0.8deg);
-		box-shadow: inset -5px 0 8px rgba(83, 50, 24, 0.24);
-	}
-	.ct-title {
-		font-family: var(--font-display);
-		font-weight: 700;
-		font-size: 23px;
-		line-height: 1.08;
-		text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-		text-wrap: balance;
-	}
-	.ct-sub {
-		font-family: var(--font-scribe);
-		font-style: italic;
-		font-size: 13.5px;
-		opacity: 0.9;
-		margin: 6px 0;
-	}
-	.ct-author {
-		font-family: var(--font-display);
-		font-size: 12px;
-		letter-spacing: 0.18em;
-		text-transform: uppercase;
-		opacity: 0.88;
 	}
 </style>

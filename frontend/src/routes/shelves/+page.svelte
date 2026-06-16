@@ -14,6 +14,7 @@
 	let loading = $state(true);
 	let shareShelf = $state<Shelf | null>(null);
 	let addBookShelf = $state<Shelf | null>(null);
+	let shelfQuery = $state('');
 	let editingId = $state<string | null>(null);
 
 	const byId = $derived(new Map(books.map((b) => [b.id, b])));
@@ -53,6 +54,12 @@
 		const updated = await shelvesApi.setBooks(s.id, next);
 		shelves = shelves.map((x) => (x.id === s.id ? updated : x));
 		addBookShelf = updated;
+	}
+
+	function shelfPickerBooks() {
+		const q = shelfQuery.trim().toLowerCase();
+		if (!q) return books;
+		return books.filter((b) => `${b.title} ${b.author}`.toLowerCase().includes(q));
 	}
 
 	async function reorder(s: Shelf, from: number, to: number) {
@@ -189,32 +196,36 @@
 			class="mf-card mf-fade-up"
 			style="width:min(560px,96vw);max-height:80vh;display:flex;flex-direction:column;background:var(--paper-card)"
 		>
-			<div style="padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
-				<h2 style="font-family:var(--font-display);font-size:19px;margin:0">{$t('edit_shelf')}</h2>
-				<button class="mf-btn mf-btn--ghost" onclick={() => (addBookShelf = null)} style="padding:6px"><Icon name="close" size={18} /></button>
+			<div style="padding:20px 24px;border-bottom:1px solid var(--line);display:grid;gap:14px">
+				<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+					<h2 style="font-family:var(--font-display);font-size:19px;margin:0">{$t('edit_shelf')}</h2>
+					<button class="mf-btn mf-btn--ghost" onclick={() => (addBookShelf = null)} style="padding:6px"><Icon name="close" size={18} /></button>
+				</div>
+				<label class="picker-search">
+					<Icon name="search" size={16} />
+					<input bind:value={shelfQuery} placeholder={$t('search')} />
+				</label>
 			</div>
 			<div style="overflow:auto;padding:12px">
 				{#if books.length === 0}
 					<div style="padding:20px;text-align:center;color:var(--ink-faint)">{$t('empty_lib_sub')}</div>
 				{:else}
-					<div style="display:grid;gap:4px">
-						{#each books as b (b.id)}
+					<div class="book-picker-grid">
+						{#each shelfPickerBooks() as b (b.id)}
 							{@const on = (shelves.find((s) => s.id === target.id)?.books ?? []).includes(b.id)}
-							<button class="book-row" onclick={() => toggleBook(target, b.id)}>
-								<BookCover book={b} w={44} title={false} />
-								<span class="book-row-meta">
-									<span class="book-row-title">{b.title}</span>
-									<span class="book-row-author">{b.author || $t('anon')}</span>
-								</span>
-								<span
-									style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;color:#f0dcc0;
-										border:1.5px solid {on ? 'var(--oxblood)' : 'var(--line-strong)'};background:{on ? 'var(--oxblood)' : 'transparent'}"
-								>
+							<button class="book-card" class:on onclick={() => toggleBook(target, b.id)}>
+								<BookCover book={b} w={78} title={false} />
+								<span class="book-card-title">{b.title}</span>
+								<span class="book-card-author">{b.author || $t('anon')}</span>
+								<span class="book-card-check">
 									{#if on}<Icon name="check" size={13} stroke={3} />{/if}
 								</span>
 							</button>
 						{/each}
 					</div>
+					{#if shelfPickerBooks().length === 0}
+						<div style="padding:28px;text-align:center;color:var(--ink-faint)">{$t('empty_search')}</div>
+					{/if}
 				{/if}
 			</div>
 			<div style="padding:16px;border-top:1px solid var(--line)">
@@ -250,45 +261,90 @@
 	.shelf-name:hover {
 		border-bottom-color: var(--line-strong);
 	}
-	.book-row {
-		width: 100%;
+	.picker-search {
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		padding: 8px 10px;
-		border: none;
+		gap: 9px;
+		padding: 9px 12px;
+		border: 1px solid var(--line-strong);
 		border-radius: 8px;
+		background: var(--paper-edge);
+		color: var(--ink-faint);
+	}
+	.picker-search input {
+		width: 100%;
+		border: none;
+		outline: none;
 		background: transparent;
+		color: var(--ink);
+		font-size: 14px;
+	}
+	.book-picker-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+		gap: 12px;
+	}
+	.book-card {
+		position: relative;
+		display: grid;
+		justify-items: center;
+		gap: 6px;
+		min-height: 178px;
+		padding: 10px 8px;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--paper-edge);
 		color: var(--ink);
 		cursor: pointer;
 		font-family: var(--font-chrome);
-		text-align: left;
-		transition: background 0.16s ease;
+		text-align: center;
+		transition:
+			transform 0.14s ease,
+			border-color 0.14s ease,
+			background 0.14s ease;
 	}
-	.book-row:hover {
-		background: var(--paper-edge);
+	.book-card:hover {
+		transform: translateY(-2px);
+		background: #fffaf0;
 	}
-	.book-row:focus-visible {
-		outline: 2px solid var(--gilt);
-		outline-offset: -2px;
+	.book-card.on {
+		border-color: var(--oxblood);
+		box-shadow: 0 0 0 2px rgba(124, 34, 48, 0.16);
 	}
-	.book-row-meta {
-		flex: 1;
-		min-width: 0;
-		display: grid;
-		gap: 3px;
-	}
-	.book-row-title {
+	.book-card-title {
+		width: 100%;
 		font-weight: 700;
+		font-size: 13px;
+		line-height: 1.15;
 		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
 	}
-	.book-row-author {
+	.book-card-author {
+		width: 100%;
 		font-size: 12.5px;
 		color: var(--ink-faint);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+	.book-card-check {
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		width: 22px;
+		height: 22px;
+		border-radius: 6px;
+		display: grid;
+		place-items: center;
+		color: #f0dcc0;
+		border: 1.5px solid var(--line-strong);
+		background: rgba(250, 245, 234, 0.92);
+	}
+	.book-card.on .book-card-check {
+		border-color: var(--oxblood);
+		background: var(--oxblood);
 	}
 </style>
