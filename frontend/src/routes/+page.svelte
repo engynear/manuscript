@@ -1,34 +1,45 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
-	import { settings, SAMPLE_MD } from '$lib/settings';
-	import { auth, currentUser, books as booksApi, generate as genApi } from '$lib/api';
-	import type { BookImage, ManuscriptPlan, PlanResult, ImagesResult, ProgressEvent } from '$lib/types';
+	import { settings, forgeMarkdown, forgeTab } from '$lib/settings';
+	import { auth, currentUser, books as booksApi, streamNDJSON } from '$lib/api';
 	import Icon from '$lib/components/Icon.svelte';
 	import ManuscriptPages from '$lib/components/ManuscriptPages.svelte';
 
-	let md = $state(SAMPLE_MD);
-	let tab = $state<'md' | 'upload'>('md');
+	type GenerateResult = {
+		hash: string;
+		title: string;
+		subtitle?: string;
+		previewHtml: string;
+		pdfUrl: string;
+		imageFailures: number;
+	};
+
 	let phase = $state<'empty' | 'forging' | 'done'>('empty');
 	let pct = $state(0);
-	let stepIdx = $state(0);
-	let errorMsg = $state('');
+	let progressMessage = $state('');
+	let progressLog = $state<string[]>([]);
+	let result = $state<GenerateResult | null>(null);
+	let error = $state('');
+	const lineCount = $derived($forgeMarkdown.split('\n').length);
 
-	// Results of the latest generation, used by the preview + save.
-	let plan = $state<ManuscriptPlan | null>(null);
-	let images = $state<BookImage[]>([]);
-	let contentHash = $state('');
-
-	const steps = ['p_parse', 'p_paginate', 'p_illuminate', 'p_bind'];
-	const lineCount = $derived(md.split('\n').length);
-
-	// Map a streamed progress event onto the 4-step visual.
-	function applyProgress(e: ProgressEvent, base: number, span: number) {
-		if (typeof e.progress === 'number') pct = base + (e.progress / 100) * span;
-		// step phases: plan run → parse/paginate; image run → illuminate/bind
-		if (e.step === 'read' || e.step === 'normalize') stepIdx = 0;
-		else if (e.step === 'plan') stepIdx = 1;
-		else if (e.step?.startsWith('image')) stepIdx = Math.min(3, base >= 50 ? 3 : 2);
+	function previewFrameHtml(html: string): string {
+		const previewCss = `<style>
+@media screen {
+	html, body { overflow-x: hidden !important; }
+	body { background: #2b2118 !important; }
+	.manuscript-root { min-height: 100% !important; overflow-x: hidden !important; }
+	.manuscript-book {
+		min-width: 0 !important;
+		width: fit-content !important;
+		max-width: 100% !important;
+		margin: 0 auto !important;
+		padding: 28px 0 44px !important;
+		zoom: .58;
+	}
+}
+</style>`;
+		return html.includes('</head>') ? html.replace('</head>', `${previewCss}</head>`) : `${previewCss}${html}`;
 	}
 
 	async function generate() {
@@ -39,40 +50,31 @@
 		}
 		phase = 'forging';
 		pct = 0;
-		stepIdx = 0;
-		errorMsg = '';
-		plan = null;
-		images = [];
-		contentHash = '';
-
-		const imageLimit = $settings.imageLimit ?? 0;
+		progressMessage = $t('generating');
+		progressLog = [];
+		result = null;
+		error = '';
 		try {
-			// 1) Plan (0–55% of the bar).
-			await genApi.plan({ markdown: md, imageLimit }, (e) => {
-				applyProgress(e, 0, 55);
-				if (e.type === 'error') throw new Error(e.message || 'Plan generation failed');
-				if (e.type === 'done') {
-					const r = e.result as PlanResult;
-					plan = r.plan;
-					contentHash = r.hash;
+			await streamNDJSON('/api/generate', { markdown: $forgeMarkdown, settings: $settings }, (event) => {
+				if (typeof event.progress === 'number') pct = event.progress;
+				if (event.message) {
+					progressMessage = event.message;
+					progressLog = [...progressLog.slice(-4), event.message];
+				}
+				if (event.type === 'error') {
+					throw new Error(event.message || 'Generation failed');
+				}
+				if (event.type === 'done' && event.result) {
+					result = event.result as GenerateResult;
+					phase = 'done';
+					pct = 100;
 				}
 			});
-
-			// 2) Illustrations (55–100%). Skipped server-side if none requested.
-			stepIdx = 2;
-			if (plan && imageLimit > 0) {
-				await genApi.images({ hash: contentHash, plan, imageLimit }, (e) => {
-					applyProgress(e, 55, 45);
-					if (e.type === 'error') throw new Error(e.message || 'Illustration generation failed');
-					if (e.type === 'done') images = (e.result as ImagesResult).images ?? [];
-				});
+			if (!result) {
+				throw new Error('Generation finished without a result');
 			}
-
-			pct = 100;
-			stepIdx = 3;
-			setTimeout(() => (phase = 'done'), 300);
-		} catch (err) {
-			errorMsg = err instanceof Error ? err.message : 'Generation failed';
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Generation failed';
 			phase = 'empty';
 		}
 	}
@@ -81,70 +83,61 @@
 		const input = e.target as HTMLInputElement;
 		const f = input.files?.[0];
 		if (f) {
-			md = await f.text();
-			tab = 'md';
+			$forgeMarkdown = await f.text();
+			$forgeTab = 'md';
 		}
 	}
 
-	let previewContainerW = $state(0);
-	// Subtract panel padding (22px × 2) so the page fits inside the card.
-	const previewWidth = $derived(previewContainerW > 0 ? previewContainerW - 44 : 480);
-
 	let saving = $state(false);
-	let downloading = $state(false);
-	let savedId = $state('');
 
 	function titleFromMd(src: string): string {
 		const line = src.split('\n').find((l) => l.startsWith('# '));
 		return line ? line.slice(2).trim() : 'Untitled';
 	}
 
-	/** Create the book once (or reuse the saved id). Returns its id, or null if sign-in is needed. */
-	async function persist(): Promise<string | null> {
+	async function saveToLibrary(): Promise<string | null> {
 		if (!$currentUser) {
 			goto('/signin');
 			return null;
 		}
-		if (savedId) return savedId;
-		const created = await booksApi.create({
-			title: plan?.title || titleFromMd(md),
-			subtitle: plan?.subtitle || '',
-			author: $currentUser.displayName || '',
-			sourceMarkdown: md,
-			plan,
-			contentHash,
-			images,
-			settings: $settings,
-			pageCount: md.split(/\n#{1,2}\s/).length
-		});
-		savedId = created.id;
-		return savedId;
-	}
-
-	async function saveToLibrary() {
 		saving = true;
 		try {
-			const id = await persist();
-			if (id) goto('/library');
+			const book = await booksApi.create({
+				title: result?.title || titleFromMd($forgeMarkdown),
+				author: $currentUser.displayName || '',
+				sourceMarkdown: $forgeMarkdown,
+				contentHash: result?.hash ?? '',
+				settings: $settings,
+				pageCount: $forgeMarkdown.split(/\n#{1,2}\s/).length
+			});
+			goto('/library');
+			return book.id;
 		} finally {
 			saving = false;
 		}
 	}
 
-	async function download() {
-		downloading = true;
+	async function designCover() {
+		if (!$currentUser) {
+			goto('/signin');
+			return;
+		}
+		saving = true;
 		try {
-			const id = await persist();
-			if (id) window.open(`/print/${id}`, '_blank');
+			const book = await booksApi.create({
+				title: result?.title || titleFromMd($forgeMarkdown),
+				author: $currentUser.displayName || '',
+				sourceMarkdown: $forgeMarkdown,
+				contentHash: result?.hash ?? '',
+				settings: $settings,
+				pageCount: $forgeMarkdown.split(/\n#{1,2}\s/).length
+			});
+			goto(`/cover/${book.id}`);
 		} finally {
-			downloading = false;
+			saving = false;
 		}
 	}
 
-	async function designCover() {
-		const id = await persist();
-		if (id) goto(`/cover/${id}`);
-	}
 </script>
 
 <div style="max-width:1320px;margin:0 auto;padding:26px 26px 60px">
@@ -170,30 +163,30 @@
 			<div style="display:flex;gap:6px;padding:12px 16px 0">
 				{#each [['md', 'tab_md'], ['upload', 'tab_upload']] as [k, l]}
 					<button
-						onclick={() => (tab = k as 'md' | 'upload')}
+						onclick={() => ($forgeTab = k as 'md' | 'upload')}
 						style="border:none;padding:7px 13px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;
-							background:{tab === k ? 'var(--paper-deep)' : 'transparent'};
-							color:{tab === k ? 'var(--ink)' : 'var(--ink-faint)'}">{$t(l)}</button
+							background:{$forgeTab === k ? 'var(--paper-deep)' : 'transparent'};
+							color:{$forgeTab === k ? 'var(--ink)' : 'var(--ink-faint)'}">{$t(l)}</button
 					>
 				{/each}
 			</div>
 
-			{#if tab === 'md'}
+			{#if $forgeTab === 'md'}
 				<div
-					style="display:flex;margin:16px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper-edge)"
+					style="display:flex;margin:16px;height:360px;max-height:46vh;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper-edge)"
 				>
 					<div
 						aria-hidden="true"
-						style="padding:14px 10px;text-align:right;font-family:var(--font-mono);font-size:12.5px;line-height:1.6;color:var(--ink-ghost);background:rgba(0,0,0,.025);user-select:none;min-width:38px"
+						style="height:100%;overflow:hidden;padding:14px 10px;text-align:right;font-family:var(--font-mono);font-size:12.5px;line-height:1.6;color:var(--ink-ghost);background:rgba(0,0,0,.025);user-select:none;min-width:38px"
 					>
 						{#each Array(lineCount) as _, i}
 							<div>{i + 1}</div>
 						{/each}
 					</div>
 					<textarea
-						bind:value={md}
+						bind:value={$forgeMarkdown}
 						spellcheck="false"
-						style="flex:1;border:none;outline:none;resize:vertical;min-height:300px;padding:14px;font-family:var(--font-mono);font-size:13.5px;line-height:1.6;color:var(--ink);background:transparent"
+						style="flex:1;min-height:0;height:100%;border:none;outline:none;resize:none;overflow:auto;padding:14px;font-family:var(--font-mono);font-size:13.5px;line-height:1.6;color:var(--ink);background:transparent"
 					></textarea>
 				</div>
 			{:else}
@@ -208,27 +201,39 @@
 			{/if}
 
 			<div style="display:flex;align-items:center;gap:12px;padding:0 18px 18px">
-				<span class="mf-chip">{md.length} {$t('chars')}</span>
+				<span class="mf-chip">{$forgeMarkdown.length} {$t('chars')}</span>
 				<span style="font-size:13px;color:var(--ink-faint)">{$t('supports_md')}</span>
 				<div style="flex:1"></div>
 				<button class="mf-btn" onclick={() => goto('/settings')}>
 					<Icon name="settings" size={16} />{$t('settings')}
 				</button>
 				<button class="mf-btn mf-btn--primary" onclick={generate} disabled={phase === 'forging'}>
-					<Icon name="forge" size={17} />{phase === 'forging' ? $t('generating') : $t('generate')}
+					<Icon name="forge" size={17} />{phase === 'forging' ? `${Math.round(pct)}%` : $t('generate')}
 				</button>
 			</div>
-			{#if errorMsg}
+			{#if phase === 'forging'}
 				<div
-					style="margin:0 18px 18px;padding:10px 14px;border-radius:8px;background:rgba(122,23,15,.08);border:1px solid rgba(122,23,15,.25);color:var(--oxblood);font-size:13.5px"
+					class="mf-fade"
+					style="margin:0 18px 18px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.38)"
 				>
-					{errorMsg}
+					<div style="display:flex;align-items:center;gap:10px">
+						<div
+							style="height:7px;flex:1;border-radius:100px;overflow:hidden;background:var(--paper-deep);border:1px solid var(--line)"
+						>
+							<div
+								style="height:100%;width:{pct}%;background:linear-gradient(90deg,var(--gilt),var(--oxblood));transition:width .25s ease"
+							></div>
+						</div>
+						<span style="font-family:var(--font-mono);font-size:12px;color:var(--ink-soft)">{Math.round(pct)}%</span>
+					</div>
+					<div style="margin-top:9px;font-size:13.5px;color:var(--ink-soft)">
+						{progressMessage || $t('generating')}
+					</div>
 				</div>
 			{/if}
 		</section>
 
 		<!-- right: forged preview -->
-		<div bind:clientWidth={previewContainerW} style="min-width:0">
 		<section
 			class="mf-card mf-fade-up"
 			style="overflow:hidden;position:relative;min-height:540px;display:flex;flex-direction:column;animation-delay:80ms"
@@ -242,7 +247,6 @@
 				>
 				<div style="flex:1">
 					<h2 style="margin:0;font-family:var(--font-display);font-size:18px">{$t('forged_title')}</h2>
-					<div style="font-size:13px;color:var(--ink-faint)">{$t('forged_sub')}</div>
 				</div>
 			</div>
 
@@ -265,16 +269,22 @@
 							</div>
 						</div>
 					</div>
+				{:else if result}
+					<iframe
+						title="Manuscript preview"
+						srcdoc={previewFrameHtml(result.previewHtml)}
+						style="display:block;width:100%;max-width:100%;box-sizing:border-box;min-height:720px;border:0;background:#2b2118;border-radius:8px"
+					></iframe>
 				{:else}
 					<div class="mf-fade-up">
-						<ManuscriptPages {md} {plan} {images} settings={$settings} width={previewWidth} />
+						<ManuscriptPages md={$forgeMarkdown} settings={$settings} width={480} />
 					</div>
 				{/if}
 
 				{#if phase === 'forging'}
 					<div
 						class="mf-fade"
-						style="position:absolute;inset:0;background:rgba(243,234,212,.85);backdrop-filter:blur(3px);display:grid;place-items:center;z-index:5"
+						style="position:absolute;inset:0;background:rgba(243,234,212,.85);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;padding-top:46px;z-index:5"
 					>
 						<div style="width:min(340px,80%);text-align:center">
 							<div
@@ -290,35 +300,49 @@
 								></div>
 							</div>
 							<div style="display:grid;gap:9px;text-align:left;justify-content:center">
-								{#each steps as step, i}
+								{#if progressLog.length}
+									{#each progressLog as st, i}
+										<div
+											style="display:flex;align-items:center;gap:10px;font-size:15px;color:{i === progressLog.length - 1
+												? 'var(--oxblood)'
+												: 'var(--ink)'};font-weight:{i === progressLog.length - 1 ? 600 : 400}"
+										>
+											<span
+												style="width:18px;height:18px;border-radius:100px;display:grid;place-items:center;flex:0 0 auto;border:1.5px solid var(--oxblood);background:{i ===
+												progressLog.length - 1
+													? 'transparent'
+													: 'var(--oxblood)'};color:#f0dcc0"
+											>
+												{#if i === progressLog.length - 1}
+													<span style="width:6px;height:6px;border-radius:100px;background:var(--oxblood)"></span>
+												{:else}
+													<Icon name="check" size={11} stroke={2.6} />
+												{/if}
+											</span>
+											{st}
+										</div>
+									{/each}
+								{:else}
 									<div
-										style="display:flex;align-items:center;gap:10px;font-size:15px;color:{i === stepIdx
-											? 'var(--oxblood)'
-											: 'var(--ink)'};font-weight:{i === stepIdx ? 600 : 400}"
+										style="display:flex;align-items:center;gap:10px;font-size:15px;color:var(--oxblood);font-weight:600"
 									>
 										<span
-											style="width:18px;height:18px;border-radius:100px;display:grid;place-items:center;flex:0 0 auto;border:1.5px solid var(--oxblood);background:{i < stepIdx
-												? 'var(--oxblood)'
-												: 'transparent'};color:#f0dcc0"
+											style="width:18px;height:18px;border-radius:100px;display:grid;place-items:center;flex:0 0 auto;border:1.5px solid var(--oxblood)"
 										>
-											{#if i < stepIdx}
-												<Icon name="check" size={11} stroke={2.6} />
-											{:else if i === stepIdx}
-												<span style="width:6px;height:6px;border-radius:100px;background:var(--oxblood)"></span>
-											{/if}
+											<span style="width:6px;height:6px;border-radius:100px;background:var(--oxblood)"></span>
 										</span>
-										{$t(step)}
+										{progressMessage}
 									</div>
-								{/each}
+								{/if}
 							</div>
 						</div>
 					</div>
 				{/if}
 			</div>
 
-			{#if errorMsg}
+			{#if error}
 				<div class="mf-fade" style="padding:12px 18px;border-top:1px solid var(--line);color:var(--oxblood)">
-					{errorMsg}
+					{error}
 				</div>
 			{/if}
 
@@ -327,8 +351,10 @@
 					class="mf-fade"
 					style="display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--line);flex-wrap:wrap"
 				>
-					<button class="mf-btn mf-btn--primary" onclick={download} disabled={downloading}><Icon name="download" size={16} />{$t('download')}</button>
-					<button class="mf-btn" onclick={designCover}>
+					<a class="mf-btn mf-btn--primary" href={result?.pdfUrl ?? '#'} download>
+						<Icon name="download" size={16} />{$t('download')}
+					</a>
+					<button class="mf-btn" onclick={designCover} disabled={saving}>
 						<Icon name="image" size={16} />{$t('design_cover')}
 					</button>
 					<div style="flex:1"></div>
@@ -338,6 +364,5 @@
 				</div>
 			{/if}
 		</section>
-		</div>
 	</div>
 </div>

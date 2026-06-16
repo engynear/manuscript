@@ -61,16 +61,11 @@
 			<div style="font-family:var(--font-display);font-size:16px">{book?.title ?? ''}</div>
 			<div style="font-size:12px;opacity:.7">{book?.author ?? ''}</div>
 		</div>
-		<div style="flex:1;display:flex;justify-content:flex-end;gap:10px">
-			{#if book}
-				<button
-					class="reader-btn"
-					aria-label={$t('download')}
-					title={$t('download')}
-					onclick={() => window.open(`/print/${book?.id}`, '_blank')}
-				>
-					<Icon name="download" size={17} />
-				</button>
+		<div style="flex:1;display:flex;justify-content:flex-end;align-items:center;gap:10px">
+			{#if book?.contentHash}
+				<a class="reader-btn" href={`/media/generated/${book.contentHash}/manuscript.pdf`} download>
+					<Icon name="download" size={17} />{$t('redownload')}
+				</a>
 			{/if}
 			<div class="rd-menu">
 				<button

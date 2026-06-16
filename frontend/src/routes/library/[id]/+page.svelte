@@ -4,8 +4,7 @@
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { books as booksApi, currentUser, auth } from '$lib/api';
-	import { PALETTES, paletteFor } from '$lib/covers';
-	import type { Book, Palette } from '$lib/types';
+	import type { Book } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import BookCover from '$lib/components/BookCover.svelte';
 
@@ -18,15 +17,13 @@
 	let title = $state('');
 	let author = $state('');
 	let subtitle = $state('');
-	let spineText = $state('');
-	let palette = $state<Palette>(PALETTES[0]);
 
 	// live preview book derived from the draft
 	const preview = $derived<Book>({
 		...(book as Book),
 		title: title || $t('untitled'),
 		author,
-		cover: { palette, spineText, artUrl: book?.cover?.artUrl ?? null }
+		cover: book?.cover ?? {}
 	});
 
 	function load(b: Book) {
@@ -34,8 +31,6 @@
 		title = b.title;
 		author = b.author;
 		subtitle = b.subtitle ?? '';
-		spineText = b.cover?.spineText ?? '';
-		palette = b.cover?.palette ?? paletteFor(b);
 	}
 
 	async function save() {
@@ -50,7 +45,7 @@
 				subtitle: subtitle.trim(),
 				year: book.year ?? null,
 				settings: book.settings,
-				cover: { palette, spineText: spineText.trim(), artUrl: book.cover?.artUrl ?? null },
+				cover: book.cover ?? {},
 				sourceMarkdown: book.sourceMarkdown ?? '',
 				contentHash: book.contentHash ?? '',
 				pageCount: book.pageCount
@@ -127,28 +122,6 @@
 					<span class="lbl">{$t('f_subtitle')}</span>
 					<input bind:value={subtitle} placeholder="—" />
 				</label>
-				<label class="f">
-					<span class="lbl">{$t('spine_title')}</span>
-					<input bind:value={spineText} placeholder={title} />
-				</label>
-
-				<div class="f">
-					<span class="lbl">{$t('cover_palette')}</span>
-					<div class="swatches">
-						{#each PALETTES as p}
-							<button
-								type="button"
-								class="sw"
-								class:on={palette.spine === p.spine}
-								title={p.spine}
-								aria-label={p.spine}
-								style="background:linear-gradient(120deg,{p.spine},{p.foil})"
-								onclick={() => (palette = p)}
-							></button>
-						{/each}
-					</div>
-				</div>
-
 				{#if error}<p class="err">{error}</p>{/if}
 
 				<div class="bar">
@@ -260,29 +233,6 @@
 	.f input:focus {
 		border-color: var(--oxblood);
 		box-shadow: 0 0 0 3px rgba(124, 34, 48, 0.12);
-	}
-	.swatches {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 9px;
-	}
-	.sw {
-		width: 38px;
-		height: 38px;
-		border-radius: 9px;
-		cursor: pointer;
-		border: 1px solid var(--line-strong);
-		box-shadow: inset 2px 0 4px rgba(0, 0, 0, 0.3);
-		transition:
-			transform 0.16s ease,
-			box-shadow 0.16s ease;
-	}
-	.sw:hover {
-		transform: translateY(-2px);
-	}
-	.sw.on {
-		border-color: var(--ink);
-		box-shadow: 0 0 0 2px var(--gilt), inset 2px 0 4px rgba(0, 0, 0, 0.3);
 	}
 	.bar {
 		display: flex;

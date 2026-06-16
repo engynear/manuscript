@@ -21,6 +21,8 @@ export interface Cover {
 	palette?: Palette;
 	spineText?: string;
 	artUrl?: string | null;
+	titleColor?: string;
+	hideTitle?: boolean;
 }
 
 export type FontStyle =
@@ -50,6 +52,7 @@ export interface ManuscriptSettings {
 	titleDivider: string;
 	dropcap: string;
 	fontStyle: FontStyle;
+	fontSize: number;
 }
 
 /** A generated illustration tied to a manuscript section. */

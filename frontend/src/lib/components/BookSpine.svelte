@@ -11,19 +11,29 @@
 	let { book, h = 230, onclick }: Props = $props();
 
 	const pal = $derived(paletteFor(book));
-	const w = $derived(34 + ((book.pageCount % 5) * 5));
 	const sc = $derived(h / 230);
 
 	const spineText = $derived(spineTextFor(book));
+	const spineLines = $derived(
+		spineText
+			.split(/\r?\n/)
+			.map((line) => line.trim())
+			.filter(Boolean)
+	);
+	const lineCount = $derived(Math.max(1, spineLines.length));
+	const longestLine = $derived(spineLines.reduce((max, line) => Math.max(max, line.length), 0));
+	const w = $derived(
+		Math.min(88 * sc, 40 * sc + Math.max(0, lineCount - 1) * 13 * sc + ((book.pageCount % 5) * 3))
+	);
 	// Shrink the title (and let it wrap to a 2nd column) so the whole thing fits.
 	const titleSize = $derived(
 		(() => {
-			const base = Math.max(10, 12.5 * sc);
+			const base = Math.max(12, 20 * sc);
 			// usable vertical run for the (rotated) text, in px — allow up to 2 columns
-			const avail = h * 0.7 * 2;
+			const avail = h * 0.8;
 			// rough advance per character for the display face
-			const fit = avail / (spineText.length * 0.92);
-			return Math.max(7, Math.min(base, fit));
+			const fit = avail / Math.max(1, longestLine * 0.58);
+			return Math.max(10.5, Math.min(base, fit));
 		})()
 	);
 </script>
@@ -47,8 +57,9 @@
 	</div>
 	<div
 		style="writing-mode:vertical-rl;transform:rotate(180deg);font-family:var(--font-display);
-			font-weight:600;font-size:{titleSize}px;letter-spacing:.04em;line-height:1.15;text-align:center;
-			text-shadow:0 1px 1px rgba(0,0,0,.45);max-height:80%;max-width:88%;overflow:hidden"
+			font-weight:700;font-size:{titleSize}px;letter-spacing:.01em;line-height:1.08;text-align:center;
+			text-shadow:0 1px 1px rgba(0,0,0,.45);max-height:78%;max-width:calc(100% - {8 * sc}px);
+			overflow:hidden;overflow-wrap:anywhere;word-break:break-word;white-space:pre-line"
 	>
 		{spineText}
 	</div>
