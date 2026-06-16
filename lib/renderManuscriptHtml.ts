@@ -74,11 +74,16 @@ const manuscriptFonts = {
   calligrapher: {
     body: "\"Forge Calligrapher\", \"Forge EB Garamond\", Georgia, serif",
     display: "\"Forge Calligrapher\", \"Forge Cormorant\", serif"
+  },
+  petrock: {
+    body: "\"Forge Petrock\", \"Forge EB Garamond\", Georgia, serif",
+    display: "\"Forge Petrock\", \"Forge Cormorant\", serif"
   }
 } satisfies Record<ManuscriptSettings["fontStyle"], { body: string; display: string }>;
 const fontFiles: Partial<Record<ManuscriptSettings["fontStyle"], string>> = {
   festus: "/assets/manuscript/fonts/festus.ttf",
-  calligrapher: "/assets/manuscript/fonts/calligrapher-regular.ttf"
+  calligrapher: "/assets/manuscript/fonts/calligrapher-regular.ttf",
+  petrock: "/assets/manuscript/fonts/kingthings-petrock-regular.ttf"
 };
 
 async function fileExists(filePath: string): Promise<boolean> {

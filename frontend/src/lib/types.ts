@@ -39,7 +39,8 @@ export type FontStyle =
 	| 'uncial'
 	| 'almendra'
 	| 'festus'
-	| 'calligrapher';
+	| 'calligrapher'
+	| 'petrock';
 
 /**
  * Rich manuscript settings (asset-based), restored from the original app and

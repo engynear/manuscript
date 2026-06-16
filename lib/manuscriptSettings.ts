@@ -19,9 +19,10 @@ export const manuscriptSettingsSchema = z.object({
       "uncial",
       "almendra",
       "festus",
-      "calligrapher"
+      "calligrapher",
+      "petrock"
     ])
-    .default("garamond")
+    .default("petrock")
 });
 
 export type ManuscriptSettings = z.infer<typeof manuscriptSettingsSchema>;

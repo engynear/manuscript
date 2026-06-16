@@ -840,6 +840,9 @@ func fontCSS(style string) string {
 	case "almendra":
 		body = "/assets/manuscript/fonts/almendra-display-regular.ttf"
 		display = body
+	case "petrock":
+		body = "/assets/manuscript/fonts/kingthings-petrock-regular.ttf"
+		display = body
 	}
 	return `@font-face{font-family:"Forge Body";src:url("` + body + `")}@font-face{font-family:"Forge Display";src:url("` + display + `");font-weight:700}`
 }

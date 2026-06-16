@@ -125,6 +125,13 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: "Forge Petrock";
+  src: url("/assets/manuscript/fonts/kingthings-petrock-regular.ttf") format("truetype");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
 @page {
   size: A4;
   margin: 0;

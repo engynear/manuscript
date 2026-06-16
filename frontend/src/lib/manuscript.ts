@@ -81,6 +81,7 @@ export interface FontOption {
 }
 
 export const fontOptions: FontOption[] = [
+	{ value: 'petrock', label: 'Kingthings Petrock', description: 'Latin medieval storybook hand', family: '"Forge Petrock", "Forge EB Garamond", serif', preview: 'latin', assetPath: '/assets/manuscript/fonts/kingthings-petrock-regular.ttf' },
 	{ value: 'garamond', label: 'EB Garamond', description: 'Readable literary manuscript', family: '"Forge EB Garamond", Georgia, serif', preview: 'latin' },
 	{ value: 'monomakh', label: 'Monomakh Unicode', description: 'Old Slavic display hand', family: '"Forge Monomakh", "Forge EB Garamond", serif', preview: 'ru' },
 	{ value: 'ponomar', label: 'Ponomar Unicode', description: 'Church Slavonic book hand', family: '"Forge Ponomar", "Forge EB Garamond", serif', preview: 'ru' },
