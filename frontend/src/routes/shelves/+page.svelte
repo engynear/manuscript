@@ -147,6 +147,7 @@
 						<div style="display:flex;align-items:flex-end;gap:5px;min-height:232px;padding-bottom:2px">
 							{#each shelfBooks as book, i (book.id)}
 								<div
+									class="shelf-book"
 									role="listitem"
 									draggable="true"
 									ondragstart={() => (drag = { shelfId: shelf.id, from: i })}
@@ -236,6 +237,26 @@
 {/if}
 
 <style>
+	/* When a book turns to show its cover (BookSpine hover/focus), the books to its
+	   right slide over so the unfolding cover isn't overlapped. ~132px clears the
+	   cover's projected width for the fixed shelf height (h=232 → cover ≈155px). */
+	.shelf-book {
+		transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+	.shelf-book:hover ~ .shelf-book,
+	.shelf-book:focus-within ~ .shelf-book {
+		transform: translateX(132px);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.shelf-book {
+			transition: none;
+		}
+		.shelf-book:hover ~ .shelf-book,
+		.shelf-book:focus-within ~ .shelf-book {
+			transform: none;
+		}
+	}
+
 	.shelf-in {
 		animation: shelf-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 	}

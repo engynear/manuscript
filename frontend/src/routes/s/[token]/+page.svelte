@@ -258,6 +258,22 @@
 	.shared-book {
 		position: relative;
 		flex: 0 0 auto;
+		transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+	}
+	/* Slide the books to the right aside so a turned cover isn't overlapped.
+	   ~132px clears the cover's projected width (h=232 → cover ≈155px). */
+	.shared-book:hover ~ .shared-book,
+	.shared-book:focus-within ~ .shared-book {
+		transform: translateX(132px);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.shared-book {
+			transition: none;
+		}
+		.shared-book:hover ~ .shared-book,
+		.shared-book:focus-within ~ .shared-book {
+			transform: none;
+		}
 	}
 	.shared-download {
 		position: absolute;
