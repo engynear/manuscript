@@ -144,6 +144,7 @@ export type ManuscriptBlock =
 	| { t: 'h1'; html: string }
 	| { t: 'h2'; html: string }
 	| { t: 'p'; html: string; dropCap?: boolean }
+	| { t: 'verse'; html: string }
 	| { t: 'illustration'; url: string; caption: string }
 	| { t: 'ornament' };
 
@@ -217,6 +218,37 @@ export function dropFirst(html: string): { first: string; rest: string } {
 /** True for a Markdown thematic break line (`---`, `***`, `___`, `- - -`). */
 function isThematicBreak(s: string): boolean {
 	return /^\s*([-*_])(?:\s*\1){2,}\s*$/.test(s);
+}
+
+/** A fenced code opener; captures the optional language (``` or ~~~). */
+const FENCE_RE = /^\s*(```+|~~~+)\s*([A-Za-z][\w-]*)?\s*$/;
+
+/** Languages that mark a fenced block as rhymed verse rather than prose. */
+function isVerseLang(lang?: string): boolean {
+	return !!lang && /^(verse|poem|poetry|stanza|stih|stikh)$/i.test(lang);
+}
+
+/**
+ * Turn the raw lines inside a ```verse fence into one block per stanza
+ * (blank-line separated), preserving each line break. Stanzas are separate
+ * blocks so the paginator can break a long song between stanzas, never mid-line.
+ */
+function verseBlocks(lines: string[]): ManuscriptBlock[] {
+	const stanzas: string[][] = [];
+	let cur: string[] = [];
+	for (const raw of lines) {
+		if (raw.trim() === '') {
+			if (cur.length) stanzas.push(cur);
+			cur = [];
+		} else {
+			cur.push(raw);
+		}
+	}
+	if (cur.length) stanzas.push(cur);
+	return stanzas.map((st) => ({
+		t: 'verse',
+		html: st.map((l) => renderInline(l.replace(/\s+$/, ''))).join('<br />')
+	}));
 }
 
 /**
@@ -454,7 +486,24 @@ function blocksFromMarkdown(src: string): ManuscriptBlock[] {
 			para = [];
 		}
 	};
-	for (const l of (src || '').split('\n')) {
+	const lines = (src || '').split('\n');
+	for (let i = 0; i < lines.length; i++) {
+		const l = lines[i];
+		const fence = FENCE_RE.exec(l);
+		if (fence) {
+			flush();
+			const marker = fence[1];
+			const verse = isVerseLang(fence[2]);
+			const body: string[] = [];
+			i++;
+			for (; i < lines.length; i++) {
+				if (lines[i].trimStart().startsWith(marker)) break;
+				body.push(lines[i]);
+			}
+			if (verse) blocks.push(...verseBlocks(body));
+			else if (body.length) blocks.push({ t: 'p', html: renderInline(body.join(' ')) });
+			continue;
+		}
 		const heading = /^(#{1,6})\s+(.*)$/.exec(l);
 		if (heading) {
 			// Only a top-level `#` is the manuscript title (h1); every deeper level
@@ -491,7 +540,24 @@ function bodyBlocks(body: string): ManuscriptBlock[] {
 			para = [];
 		}
 	};
-	for (const line of (body || '').split('\n')) {
+	const lines = (body || '').split('\n');
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+		const fence = FENCE_RE.exec(line);
+		if (fence) {
+			flush();
+			const marker = fence[1];
+			const verse = isVerseLang(fence[2]);
+			const fenced: string[] = [];
+			i++;
+			for (; i < lines.length; i++) {
+				if (lines[i].trimStart().startsWith(marker)) break;
+				fenced.push(lines[i]);
+			}
+			if (verse) out.push(...verseBlocks(fenced));
+			else if (fenced.length) out.push({ t: 'p', html: renderInline(fenced.join(' ')) });
+			continue;
+		}
 		const heading = /^(#{1,6})\s+(.*)$/.exec(line);
 		if (heading) {
 			flush();

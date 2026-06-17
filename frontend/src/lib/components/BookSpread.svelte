@@ -308,6 +308,8 @@
 				<figcaption style="margin-top:.4em;font-style:italic;font-size:.85em;color:{ink.fadedInk}">{b.caption}</figcaption>
 			{/if}
 		</figure>
+	{:else if b.t === 'verse'}
+		<p style="margin:.4em 0 .9em;text-align:center;font-style:italic;line-height:1.55;color:{ink.fadedInk}">{@html b.html}</p>
 	{:else if b.dropCap && s.dropcap}
 		<p style="margin:0 0 .85em;text-align:justify;hyphens:auto">
 			<span

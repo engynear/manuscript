@@ -316,6 +316,26 @@ body {
   background: rgba(255, 248, 220, 0.2);
 }
 
+.manuscript-verse {
+  margin: 0.5em 0 0.95em;
+  color: var(--manuscript-faded-ink, #553217);
+  font-style: italic;
+  line-height: 1.5;
+  text-align: center;
+  text-indent: 0;
+  orphans: 2;
+  widows: 2;
+}
+
+.manuscript-stanza {
+  display: block;
+  margin: 0 0 0.7em;
+}
+
+.manuscript-stanza:last-child {
+  margin-bottom: 0;
+}
+
 .manuscript-body code {
   padding: 0.12em 0.28em;
   border: 1px solid rgba(74, 39, 17, 0.22);
