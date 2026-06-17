@@ -11,10 +11,33 @@ import { defaultManuscriptSettings, ManuscriptSettings } from "./manuscriptSetti
 type MdNode = {
   type: string;
   value?: string;
+  lang?: string;
   ordered?: boolean;
   url?: string;
   children?: MdNode[];
 };
+
+/** Languages on a fenced block that mark it as rhymed verse rather than code. */
+function isVerseLang(lang?: string | null): boolean {
+  return !!lang && /^(verse|poem|poetry|stanza|stih|stikh)$/i.test(lang);
+}
+
+/** Render a ```verse code node as stanzas with preserved line breaks. */
+function renderVerse(node: MdNode): string {
+  const stanzas = (node.value ?? "")
+    .replace(/\s+$/, "")
+    .split(/\n[ \t]*\n/);
+  const body = stanzas
+    .map(
+      (stanza) =>
+        `<span class="manuscript-stanza">${stanza
+          .split("\n")
+          .map((line) => escapeHtml(line.replace(/\s+$/, "")))
+          .join("<br />")}</span>`
+    )
+    .join("");
+  return `<div class="manuscript-verse">${body}</div>`;
+}
 
 type RenderOptions = {
   imageMode?: "public" | "data";
@@ -328,6 +351,7 @@ function renderBlock(node: MdNode): string {
     case "listItem":
       return `<li>${children.map(renderBlock).join("")}</li>`;
     case "code":
+      if (isVerseLang(node.lang)) return renderVerse(node);
       return `<pre><code>${escapeHtml(node.value ?? "")}</code></pre>`;
     case "thematicBreak":
       return `<div class="manuscript-rule"><span></span></div>`;
@@ -351,6 +375,10 @@ function blockUnits(node: MdNode): number {
     case "list":
       return Math.max(8, (node.children?.length ?? 1) * 5);
     case "code":
+      if (isVerseLang(node.lang)) {
+        const lines = (node.value ?? "").split("\n").length;
+        return Math.max(6, lines * 2.6 + 3);
+      }
       return Math.max(8, Math.ceil((node.value ?? "").length / 80) * 4);
     case "thematicBreak":
       return 7;
