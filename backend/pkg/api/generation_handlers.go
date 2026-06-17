@@ -50,18 +50,29 @@ type generationProgress struct {
 }
 
 type generationResult struct {
-	Hash          string `json:"hash"`
-	Title         string `json:"title"`
-	Subtitle      string `json:"subtitle,omitempty"`
-	PreviewHTML   string `json:"previewHtml"`
-	PDFURL        string `json:"pdfUrl"`
-	ImageFailures int    `json:"imageFailures"`
+	Hash          string         `json:"hash"`
+	Title         string         `json:"title"`
+	Subtitle      string         `json:"subtitle,omitempty"`
+	PreviewHTML   string         `json:"previewHtml"`
+	PDFURL        string         `json:"pdfUrl"`
+	ImageFailures int            `json:"imageFailures"`
+	Plan          manuscriptPlan `json:"plan"`
+	Images        []resultImage  `json:"images"`
+}
+
+// resultImage mirrors store.BookImage / the frontend BookImage shape so the
+// client can persist illustrations alongside the saved book.
+type resultImage struct {
+	SectionID string `json:"sectionId"`
+	URL       string `json:"url"`
+	Caption   string `json:"caption"`
+	Failed    bool   `json:"failed"`
 }
 
 type manuscriptPlan struct {
-	Title    string          `json:"title"`
-	Subtitle string          `json:"subtitle"`
-	Sections []planSection   `json:"sections"`
+	Title    string        `json:"title"`
+	Subtitle string        `json:"subtitle"`
+	Sections []planSection `json:"sections"`
 }
 
 type planSection struct {
@@ -114,7 +125,7 @@ var (
 	// with no space, which markdownHeading does not match) — strip so the
 	// hashes don't leak into the rendered paragraph / drop cap.
 	leadingHeadingMarker = regexp.MustCompile(`^\s*#{1,6}\s*`)
-	shortWordBreak   = regexp.MustCompile(`(^|[\s(«"“])([A-Za-zА-Яа-яЁё]{1,2})\s+([A-Za-zА-Яа-яЁё])`)
+	shortWordBreak       = regexp.MustCompile(`(^|[\s(«"“])([A-Za-zА-Яа-яЁё]{1,2})\s+([A-Za-zА-Яа-яЁё])`)
 )
 
 const generationCacheVersion = "v9"
@@ -276,6 +287,24 @@ func (s *Server) handleGenerateManuscript(w http.ResponseWriter, r *http.Request
 	}
 
 	pdfURL := strings.TrimRight(s.cfg.MediaBaseURL, "/") + "/generated/" + hash + "/manuscript.pdf"
+
+	// Collect illustrations in section order so the client can persist them on
+	// the saved book (the reader reads book.images). Skip failed ones — they
+	// have no URL and the reader falls back to an ornament.
+	resultImages := []resultImage{}
+	for _, section := range plan.Sections {
+		img, ok := images[section.ID]
+		if !ok || img.Failed || img.URL == "" {
+			continue
+		}
+		resultImages = append(resultImages, resultImage{
+			SectionID: img.SectionID,
+			URL:       img.URL,
+			Caption:   img.Caption,
+			Failed:    img.Failed,
+		})
+	}
+
 	send(generationProgress{
 		Type:     "done",
 		Message:  "Manuscript complete",
@@ -287,6 +316,8 @@ func (s *Server) handleGenerateManuscript(w http.ResponseWriter, r *http.Request
 			PreviewHTML:   previewHTML,
 			PDFURL:        pdfURL,
 			ImageFailures: failures,
+			Plan:          plan,
+			Images:        resultImages,
 		},
 	})
 }

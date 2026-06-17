@@ -3,6 +3,7 @@
 	import { t } from '$lib/i18n';
 	import { settings, forgeMarkdown, forgeTab } from '$lib/settings';
 	import { auth, currentUser, books as booksApi, streamNDJSON, mediaUrl } from '$lib/api';
+	import type { ManuscriptPlan, BookImage } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
 	import ManuscriptPages from '$lib/components/ManuscriptPages.svelte';
 
@@ -13,6 +14,8 @@
 		previewHtml: string;
 		pdfUrl: string;
 		imageFailures: number;
+		plan: ManuscriptPlan;
+		images: BookImage[];
 	};
 
 	let phase = $state<'empty' | 'forging' | 'done'>('empty');
@@ -108,6 +111,8 @@
 				sourceMarkdown: $forgeMarkdown,
 				contentHash: result?.hash ?? '',
 				settings: $settings,
+				plan: result?.plan ?? null,
+				images: result?.images ?? [],
 				pageCount: $forgeMarkdown.split(/\n#{1,2}\s/).length
 			});
 			goto('/library');
@@ -130,6 +135,8 @@
 				sourceMarkdown: $forgeMarkdown,
 				contentHash: result?.hash ?? '',
 				settings: $settings,
+				plan: result?.plan ?? null,
+				images: result?.images ?? [],
 				pageCount: $forgeMarkdown.split(/\n#{1,2}\s/).length
 			});
 			goto(`/cover/${book.id}`);
