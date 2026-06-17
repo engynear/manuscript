@@ -321,7 +321,7 @@ body {
   color: var(--manuscript-faded-ink, #553217);
   font-style: italic;
   line-height: 1.5;
-  text-align: center;
+  text-align: left;
   text-indent: 0;
   orphans: 2;
   widows: 2;
